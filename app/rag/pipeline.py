@@ -1,87 +1,110 @@
-from app.rag.loader import extract_pages_from_pdf
+import os
+import logging
+from app.rag.loader import extract_pages_from_file
 from app.rag.chunker import chunk_text
-from app.rag.embeddings import get_embedding
+from app.rag.embeddings import get_embeddings_batch, get_embedding
 from app.rag.vector_store import add_chunks_to_db
 from app.rag.retriever import retrieve_top_k
 from app.llm.generator import generate_answer
-import logging
+from app.rules.manager import check_guardrails_and_faq, get_business_rules
 
 logger = logging.getLogger(__name__)
 
 def ingest_document(file_path: str) -> int:
     """
-    Full pipeline to ingest a PDF document.
-    1. Load PDF and extract text by page
-    2. Chunk the text
-    3. Generate embeddings
-    4. Store in Vector DB
-    
-    Returns:
-        int: Number of chunks processed and stored.
+    Ingests any supported document (PDF, Image, CSV, Excel, Word, TXT).
     """
-    logger.info(f"Starting ingestion pipeline for {file_path}")
+    logger.info(f"===== Starting ingestion for: {file_path} =====")
     
-    # 1. Load PDF
-    pages = extract_pages_from_pdf(file_path)
-    logger.info(f"Extracted {len(pages)} pages.")
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"File not found: {file_path}")
     
-    # 2. Chunk text
+    pages = extract_pages_from_file(file_path)
+    logger.info(f"Step 1 — Sections/Pages extracted: {len(pages)}")
+    if not pages:
+        raise ValueError(
+            f"No text could be extracted from {os.path.basename(file_path)}. "
+            "Please ensure the file contains readable text or clear images."
+        )
+    
     chunks = chunk_text(pages)
-    logger.info(f"Generated {len(chunks)} chunks.")
+    logger.info(f"Step 2 — Chunks generated: {len(chunks)}")
+    if not chunks:
+        raise ValueError(f"No text chunks were produced from {os.path.basename(file_path)}.")
     
-    # 3. Generate embeddings
-    # Using batching if possible, but Gemini API usually takes one at a time or lists
     texts = [chunk['text'] for chunk in chunks]
+    batch_size = int(os.getenv("EMBEDDING_BATCH_SIZE", 32))
     
-    # Gemini can embed multiple texts if passed as a list
-    import google.generativeai as genai
-    embeddings = []
-    
-    # Process in batches to avoid rate limits or large payload issues
-    batch_size = 100
-    for i in range(0, len(texts), batch_size):
-        batch_texts = texts[i:i + batch_size]
-        try:
-            result = genai.embed_content(
-                model="models/text-embedding-004",
-                content=batch_texts,
-                task_type="retrieval_document"
-            )
-            # Depending on if batch_texts is 1 or many, result['embedding'] is a list of lists or just a list
-            if isinstance(batch_texts, list) and len(batch_texts) > 1:
-                embeddings.extend(result['embedding'])
-            elif isinstance(batch_texts, list) and len(batch_texts) == 1:
-                embeddings.append(result['embedding'])
-        except Exception as e:
-            logger.error(f"Error embedding batch: {e}")
-            raise e
+    logger.info(f"Step 3 — Generating {len(texts)} embeddings (batch_size={batch_size})...")
+    embeddings = get_embeddings_batch(texts, batch_size=batch_size)
             
-    logger.info(f"Generated {len(embeddings)} embeddings.")
+    if len(embeddings) != len(chunks):
+        logger.warning("Mismatch in batch embeddings. Re-trying one-by-one as fallback.")
+        embeddings = [get_embedding(t) for t in texts]
     
-    # 4. Store in Chroma
+    logger.info("Step 4 — Adding to ChromaDB...")
     add_chunks_to_db(chunks, embeddings)
     
-    logger.info("Ingestion complete.")
+    logger.info(f"===== Ingestion complete. {len(chunks)} chunks stored. =====")
     return len(chunks)
 
-def query_pipeline(query: str) -> dict:
+def ingest_raw_text(title: str, text: str) -> int:
     """
-    Full pipeline to answer a query.
-    1. Retrieve relevant chunks from Vector DB
-    2. Generate answer using LLM
-    
-    Returns:
-        dict: Answer and sources.
+    Ingests manual text entered by admin/user directly into vector store.
     """
-    logger.info(f"Processing query: {query}")
+    clean_title = title.strip() or "manual_snippet"
+    if not clean_title.endswith(".txt"):
+        clean_title = f"{clean_title}.txt"
+        
+    pages = [{
+        "page_num": 1,
+        "text": text.strip(),
+        "filename": clean_title,
+        "source": "manual_entry"
+    }]
     
-    # 1. Retrieve
-    retrieved_chunks = retrieve_top_k(query)
+    chunks = chunk_text(pages)
+    if not chunks:
+        raise ValueError("Provided text is too short to chunk.")
+        
+    texts = [chunk['text'] for chunk in chunks]
+    embeddings = get_embeddings_batch(texts)
+    if len(embeddings) != len(chunks):
+        embeddings = [get_embedding(t) for t in texts]
+        
+    add_chunks_to_db(chunks, embeddings)
+    logger.info(f"Ingested manual text '{clean_title}' ({len(chunks)} chunks).")
+    return len(chunks)
+
+def query_pipeline(query: str, filename: str = None) -> dict:
+    """
+    Full RAG pipeline with Business Rules, Guardrails & Strict-Mode Document Filter.
+    """
+    logger.info(f"Processing query: '{query}' (filter filename={filename})")
     
-    # 2. Generate
+    # 1. Check Business Guardrails & Direct FAQ
+    guardrail_res = check_guardrails_and_faq(query)
+    if guardrail_res is not None:
+        logger.info("Query answered directly by Business Guardrail / FAQ Rule.")
+        return guardrail_res
+        
+    # 2. Retrieve relevant chunks from Vector DB
+    retrieved_chunks = retrieve_top_k(query, filename=filename)
+    logger.info(f"Retrieved {len(retrieved_chunks)} relevant chunks.")
+    
+    rules = get_business_rules()
+    strict_mode = rules.get("strict_mode", True)
+    no_answer_msg = rules.get("no_answer_response", "Xin lỗi, thông tin này không có trong tài liệu được cung cấp.")
+    
+    if strict_mode and not retrieved_chunks:
+        return {
+            "answer": no_answer_msg,
+            "sources": []
+        }
+    
+    # 3. Generate answer using LLM guided by Business Rules
     answer = generate_answer(query, retrieved_chunks)
     
-    # Format sources
     sources = []
     for chunk in retrieved_chunks:
         sources.append({
@@ -89,7 +112,6 @@ def query_pipeline(query: str) -> dict:
             "page": chunk["metadata"]["page"]
         })
     
-    # Deduplicate sources preserving order
     seen = set()
     unique_sources = []
     for s in sources:

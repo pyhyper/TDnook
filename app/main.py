@@ -1,33 +1,38 @@
+import os
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from app.api.routes import router
-from app.rag.embeddings import init_gemini
 from dotenv import load_dotenv
 import logging
 
-# Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
-# Load environment variables
 load_dotenv()
 
 app = FastAPI(
-    title="DocuRAG API",
-    description="API for Document Q&A using RAG",
-    version="1.0.0"
+    title="TDnook Enterprise",
+    description="Minimalist Paper Document Reader & Assistant",
+    version="2.1.0"
 )
 
-# Include API routes
+# Include API routes under /api or root
 app.include_router(router)
+
+# Mount static folder
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+if os.path.exists(static_dir):
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+@app.get("/")
+def serve_home():
+    index_path = os.path.join(static_dir, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return {"message": "TDnook API is running. Static files not found."}
 
 @app.on_event("startup")
 async def startup_event():
-    # Initialize Gemini API
-    try:
-        init_gemini()
-        logging.info("Gemini API initialized successfully.")
-    except ValueError as e:
-        logging.warning(f"Gemini API initialization failed: {e}")
+    logger = logging.getLogger(__name__)
+    logger.info("TDnook Paper UI started at http://localhost:8000")
 
-@app.get("/")
-def root():
-    return {"message": "Welcome to DocuRAG API. Use /docs for documentation."}

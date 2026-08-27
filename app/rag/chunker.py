@@ -13,28 +13,49 @@ def chunk_text(pages: list[dict], chunk_size: int = 1000, chunk_overlap: int = 2
     chunks = []
     chunk_id_counter = 1
     
+    if chunk_overlap >= chunk_size:
+        chunk_overlap = max(0, chunk_size - 1)
+    
     for page in pages:
-        text = page["text"]
-        filename = page["filename"]
-        page_num = page["page_num"]
+        text = page.get("text", "")
+        filename = page.get("filename", "unknown")
+        page_num = page.get("page_num", 0)
         
-        # Simple character-based chunking
+        if not text or not text.strip():
+            continue
+        
+        if len(text.strip()) <= chunk_size:
+            chunks.append({
+                "text": text.strip(),
+                "metadata": {
+                    "filename": filename,
+                    "page": page_num,
+                    "chunk_id": chunk_id_counter
+                }
+            })
+            chunk_id_counter += 1
+            continue
+        
         start = 0
         while start < len(text):
             end = start + chunk_size
-            chunk_text = text[start:end]
+            if end >= len(text):
+                end = len(text)
             
-            # Try to avoid splitting words if possible, but keep it simple for now
-            if end < len(text) and not chunk_text.endswith(" ") and not chunk_text.endswith("\n"):
-                # Find the last space to avoid breaking a word
-                last_space = chunk_text.rfind(" ")
-                if last_space != -1:
-                    chunk_text = chunk_text[:last_space]
-                    end = start + last_space + 1
+            chunk_text_str = text[start:end]
             
-            if chunk_text.strip():
+            if end < len(text):
+                last_space = chunk_text_str.rfind(" ")
+                last_newline = chunk_text_str.rfind("\n")
+                cut_point = max(last_space, last_newline)
+                if cut_point > chunk_size // 2:
+                    chunk_text_str = chunk_text_str[:cut_point]
+                    end = start + cut_point + 1
+            
+            stripped = chunk_text_str.strip()
+            if stripped and len(stripped) > 20:
                 chunks.append({
-                    "text": chunk_text.strip(),
+                    "text": stripped,
                     "metadata": {
                         "filename": filename,
                         "page": page_num,
@@ -43,10 +64,9 @@ def chunk_text(pages: list[dict], chunk_size: int = 1000, chunk_overlap: int = 2
                 })
                 chunk_id_counter += 1
             
-            # Move the start pointer forward, accounting for overlap
-            start = end - chunk_overlap
-            # Ensure we always make progress even if overlap is larger than end-start
-            if start <= end - chunk_size:
-                 start = end # prevent infinite loop if overlap >= chunk_size
+            new_start = end - chunk_overlap
+            if new_start <= start:
+                new_start = end if end > start else start + 1
+            start = new_start
                  
     return chunks

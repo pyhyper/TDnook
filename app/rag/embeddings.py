@@ -1,19 +1,23 @@
 import os
-import google.generativeai as genai
 import logging
+from sentence_transformers import SentenceTransformer
 
 logger = logging.getLogger(__name__)
 
-# Initialize the Gemini API client
-def init_gemini():
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key or api_key == "your_gemini_api_key_here":
-        raise ValueError("GEMINI_API_KEY environment variable is not set correctly.")
-    genai.configure(api_key=api_key)
+_model = None
+
+def get_model():
+    global _model
+    if _model is None:
+        model_name = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+        logger.info(f"Loading local embedding model: {model_name}")
+        _model = SentenceTransformer(model_name)
+        logger.info("Embedding model loaded successfully.")
+    return _model
 
 def get_embedding(text: str) -> list[float]:
     """
-    Generates an embedding for a given text using Gemini.
+    Generates an embedding for a given text using local SentenceTransformer.
     
     Args:
         text (str): The text to embed.
@@ -22,20 +26,17 @@ def get_embedding(text: str) -> list[float]:
         list[float]: The embedding vector.
     """
     try:
-        # Use the recommended embedding model for text
-        result = genai.embed_content(
-            model="models/text-embedding-004",
-            content=text,
-            task_type="retrieval_document",
-        )
-        return result['embedding']
+        model = get_model()
+        embedding = model.encode(text, normalize_embeddings=True, show_progress_bar=False)
+        return embedding.tolist()
     except Exception as e:
         logger.error(f"Error generating embedding: {e}")
         raise e
 
 def get_query_embedding(text: str) -> list[float]:
     """
-    Generates an embedding for a query using Gemini.
+    Generates an embedding for a query using local SentenceTransformer.
+    (Same model, same encoding - kept for API compatibility.)
     
     Args:
         text (str): The query text to embed.
@@ -43,13 +44,28 @@ def get_query_embedding(text: str) -> list[float]:
     Returns:
         list[float]: The embedding vector.
     """
+    return get_embedding(text)
+
+def get_embeddings_batch(texts: list[str], batch_size: int = 32) -> list[list[float]]:
+    """
+    Generates embeddings for a batch of texts efficiently.
+    
+    Args:
+        texts (list[str]): List of texts to embed.
+        batch_size (int): Batch size for processing.
+        
+    Returns:
+        list[list[float]]: List of embedding vectors.
+    """
     try:
-        result = genai.embed_content(
-            model="models/text-embedding-004",
-            content=text,
-            task_type="retrieval_query",
+        model = get_model()
+        embeddings = model.encode(
+            texts,
+            normalize_embeddings=True,
+            batch_size=batch_size,
+            show_progress_bar=False
         )
-        return result['embedding']
+        return embeddings.tolist()
     except Exception as e:
-        logger.error(f"Error generating query embedding: {e}")
+        logger.error(f"Error generating batch embeddings: {e}")
         raise e

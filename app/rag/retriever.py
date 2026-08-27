@@ -5,13 +5,14 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def retrieve_top_k(query: str, k: int = None, collection_name="docurag_collection") -> list[dict]:
+def retrieve_top_k(query: str, k: int = None, filename: str = None, collection_name="docurag_collection") -> list[dict]:
     """
     Retrieves the top K most similar chunks for a given query.
     
     Args:
         query (str): The search query.
         k (int): Number of results to return. Defaults to TOP_K env var or 5.
+        filename (str): Optional filename to filter chunks by.
         collection_name (str): Name of the collection to search.
         
     Returns:
@@ -24,11 +25,15 @@ def retrieve_top_k(query: str, k: int = None, collection_name="docurag_collectio
         # Generate embedding for the query
         query_embedding = get_query_embedding(query)
         
+        # Build where filter if filename is specified
+        where_filter = {"filename": filename} if filename else None
+        
         # Search the database
         collection = get_collection(collection_name)
         results = collection.query(
             query_embeddings=[query_embedding],
-            n_results=k
+            n_results=k,
+            where=where_filter
         )
         
         # Format results
@@ -45,3 +50,4 @@ def retrieve_top_k(query: str, k: int = None, collection_name="docurag_collectio
     except Exception as e:
         logger.error(f"Error retrieving from DB: {e}")
         raise e
+

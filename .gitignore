@@ -1,6 +1,100 @@
-.venv/
+# ==============================================================================
+# Git Ignore Configuration for TDnook Project
+# ==============================================================================
+
+# Byte-compiled / optimized / DLL files
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+
+# C extensions
+*.obj
+*.o
+*.lib
+*.a
+*.dll
+*.dylib
+
+# Virtual Environments
+venv/
+.venv/
+env/
+.env/
+ENV/
+env.bak/
+venv.bak/
+
+# Environment Variables & Secrets
 .env
+.env.local
+.env.*.local
+*.env
+! .env.example
+
+# Heavy Large Language Model Weights & Binaries (>100MB)
+*.gguf
+*.bin
+*.pt
+*.pth
+*.onnx
+*.safetensors
+*.ckpt
+
+# Local Database & Storage
 data/vector_db/
+data/chroma_db/
+data/easyocr_models/
+data/documents/
+data/uploaded_docs/
+*.sqlite3
+*.db
+
+# Logs & Temporary Files
+*.log
+logs/
+*.tmp
+*.temp
+
+# Unit Tests & Coverage
 .pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Editor / IDE settings
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+.project
+.pydevproject
+
+# Operating System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+[Dd]esktop.ini
+
+# Package distribution / build artifacts
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
