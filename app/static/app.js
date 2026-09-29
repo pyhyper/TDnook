@@ -1,5 +1,6 @@
 // ==========================================================================
 // DocuRAG — Minimalist Paper Web App Logic (Full-Screen & Kindle UX)
+// Supports Multi-Conversation History, User Session Documents & Cross-Referencing
 // ==========================================================================
 
 const API_BASE = "";
@@ -8,12 +9,19 @@ let currentPortal = "user";
 let currentTheme = localStorage.getItem("docurag_theme") || "theme-sepia";
 let currentTexture = localStorage.getItem("docurag_texture") || "texture-kindle";
 
+// Multi-Conversation State
+let conversations = [];
+let currentConvId = null;
+
 document.addEventListener("DOMContentLoaded", () => {
     // Apply saved theme and texture
     setPaperTheme(currentTheme);
     setPaperTexture(currentTexture);
     
-    // Load data
+    // Initialize Conversations
+    initConversations();
+
+    // Load Admin Data & Documents
     loadDocuments();
     loadAdminRules();
 
@@ -25,7 +33,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (fileInput.files.length > 0) {
                 chosenLabel.textContent = fileInput.files[0].name;
             } else {
-                chosenLabel.textContent = "Choose file to ingest";
+                chosenLabel.textContent = "Choose file to attach";
             }
         });
     }
@@ -35,19 +43,204 @@ document.addEventListener("DOMContentLoaded", () => {
     if (qInput) qInput.focus();
 });
 
-// Synchronize Body Classes for Theme + Texture
-function updateBodyClasses() {
-    // Remove all themes
-    document.body.classList.remove("theme-sepia", "theme-eink", "theme-dark");
-    // Remove all textures
-    document.body.classList.remove("texture-kindle", "texture-parchment", "texture-linen", "texture-smooth");
+// ==========================================================================
+// Multi-Conversation Management
+// ==========================================================================
+
+function initConversations() {
+    try {
+        const stored = localStorage.getItem("docurag_conversations");
+        if (stored) {
+            conversations = JSON.parse(stored);
+        }
+    } catch (e) {
+        console.warn("Failed to load conversations from storage:", e);
+        conversations = [];
+    }
+
+    if (!Array.isArray(conversations) || conversations.length === 0) {
+        const defaultConv = makeNewConversationObject("Cuộc hội thoại mới");
+        conversations = [defaultConv];
+        currentConvId = defaultConv.id;
+    } else {
+        const storedActiveId = localStorage.getItem("docurag_active_conv_id");
+        if (storedActiveId && conversations.some(c => c.id === storedActiveId)) {
+            currentConvId = storedActiveId;
+        } else {
+            currentConvId = conversations[0].id;
+        }
+    }
+
+    saveConversations();
+    renderConversationList();
+    renderActiveConversation();
+}
+
+function makeNewConversationObject(title = "Cuộc hội thoại mới") {
+    return {
+        id: "conv_" + Date.now() + "_" + Math.random().toString(36).substr(2, 4),
+        title: title,
+        createdAt: new Date().toISOString(),
+        userDoc: null, // { filename, text, pages, char_count }
+        messages: [
+            {
+                role: "bot",
+                content: "Chào bạn. Hãy đính kèm tài liệu cá nhân để đối chiếu với kiến thức hệ thống hoặc đặt câu hỏi trực tiếp. Tôi sẽ trả lời ngắn gọn, chuẩn mực theo đúng ngôn ngữ của bạn.",
+                sources: null,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            }
+        ]
+    };
+}
+
+function getCurrentConversation() {
+    let conv = conversations.find(c => c.id === currentConvId);
+    if (!conv) {
+        if (conversations.length === 0) {
+            conv = makeNewConversationObject();
+            conversations.push(conv);
+        } else {
+            conv = conversations[0];
+        }
+        currentConvId = conv.id;
+    }
+    return conv;
+}
+
+function saveConversations() {
+    try {
+        localStorage.setItem("docurag_conversations", JSON.stringify(conversations));
+        if (currentConvId) {
+            localStorage.setItem("docurag_active_conv_id", currentConvId);
+        }
+    } catch (e) {
+        console.warn("Failed to save conversations to storage:", e);
+    }
+}
+
+function createNewConversation() {
+    const newConv = makeNewConversationObject("Cuộc hội thoại mới");
+    conversations.unshift(newConv);
+    currentConvId = newConv.id;
+    saveConversations();
+    renderConversationList();
+    renderActiveConversation();
     
-    // Add current active theme and texture
+    closeMobileSidebar();
+    const qInput = document.getElementById("query-input");
+    if (qInput) qInput.focus();
+}
+
+function switchConversation(convId) {
+    if (currentConvId === convId) return;
+    currentConvId = convId;
+    saveConversations();
+    renderConversationList();
+    renderActiveConversation();
+    closeMobileSidebar();
+}
+
+function deleteConversation(convId, event) {
+    if (event) event.stopPropagation();
+    
+    conversations = conversations.filter(c => c.id !== convId);
+    if (conversations.length === 0) {
+        const newConv = makeNewConversationObject("Cuộc hội thoại mới");
+        conversations = [newConv];
+        currentConvId = newConv.id;
+    } else if (currentConvId === convId) {
+        currentConvId = conversations[0].id;
+    }
+    
+    saveConversations();
+    renderConversationList();
+    renderActiveConversation();
+}
+
+function renderConversationList() {
+    const listEl = document.getElementById("conversation-list");
+    const countBadge = document.getElementById("conv-count-badge");
+    if (!listEl) return;
+
+    if (countBadge) {
+        countBadge.textContent = `${conversations.length} ${conversations.length === 1 ? 'chat' : 'chats'}`;
+    }
+
+    listEl.innerHTML = "";
+    conversations.forEach(conv => {
+        const item = document.createElement("div");
+        item.className = `conversation-item ${conv.id === currentConvId ? 'active' : ''}`;
+        item.onclick = () => switchConversation(conv.id);
+
+        const dateStr = new Date(conv.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' });
+
+        item.innerHTML = `
+            <div class="conv-info">
+                <span class="conv-title">${escapeHtml(conv.title)}</span>
+                <span class="conv-time">${dateStr} • ${conv.messages.length} msgs${conv.userDoc ? ' • 📄 Attached' : ''}</span>
+            </div>
+            <button class="btn-delete-conv" title="Delete conversation" onclick="deleteConversation('${conv.id}', event)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        `;
+        listEl.appendChild(item);
+    });
+}
+
+function renderActiveConversation() {
+    const conv = getCurrentConversation();
+    const thread = document.getElementById("chat-thread");
+    if (!thread) return;
+
+    thread.innerHTML = "";
+    conv.messages.forEach(msg => {
+        appendMessageToDom(msg.role, msg.content, msg.sources, null, msg.timestamp);
+    });
+
+    // Update Attached Doc Chip
+    updateAttachedDocUi();
+    scrollCanvasToBottom();
+}
+
+function updateAttachedDocUi() {
+    const conv = getCurrentConversation();
+    const infoContainer = document.getElementById("attached-doc-info");
+    const nameEl = document.getElementById("attached-file-name");
+
+    if (conv.userDoc) {
+        if (infoContainer) infoContainer.style.display = "block";
+        if (nameEl) nameEl.textContent = `📄 ${conv.userDoc.filename}`;
+    } else {
+        if (infoContainer) infoContainer.style.display = "none";
+    }
+}
+
+function removeAttachedUserDoc() {
+    const conv = getCurrentConversation();
+    if (!conv.userDoc) return;
+
+    const removedName = conv.userDoc.filename;
+    conv.userDoc = null;
+    saveConversations();
+    updateAttachedDocUi();
+    renderConversationList();
+
+    appendMessage("bot", `Đã gỡ tài liệu đính kèm **${removedName}** khỏi cuộc trò chuyện này.`);
+    const statusBox = document.getElementById("upload-status");
+    if (statusBox) statusBox.style.display = "none";
+}
+
+// ==========================================================================
+// Theme, Texture & UI Settings
+// ==========================================================================
+
+function updateBodyClasses() {
+    document.body.classList.remove("theme-sepia", "theme-eink", "theme-dark");
+    document.body.classList.remove("texture-kindle", "texture-parchment", "texture-linen", "texture-smooth");
     document.body.classList.add(currentTheme);
     document.body.classList.add(currentTexture);
 }
 
-// Paper Texture Handler
 function onTextureChange() {
     const sel = document.getElementById("texture-selector");
     if (sel) {
@@ -66,13 +259,11 @@ function setPaperTexture(textureClass) {
     }
 }
 
-// Paper Tone Selector
 function setPaperTheme(themeName) {
     currentTheme = themeName;
     localStorage.setItem("docurag_theme", themeName);
     updateBodyClasses();
 
-    // Update tone button active states
     document.querySelectorAll(".tone-btn").forEach(btn => btn.classList.remove("active"));
     if (themeName === "theme-sepia") {
         document.querySelector(".tone-sepia")?.classList.add("active");
@@ -83,7 +274,6 @@ function setPaperTheme(themeName) {
     }
 }
 
-// Portal Switching (User vs Admin)
 function switchPortal(portal) {
     currentPortal = portal;
     document.querySelectorAll(".nav-item").forEach(el => el.classList.remove("active"));
@@ -102,25 +292,16 @@ function switchPortal(portal) {
     }
 }
 
-
-
-// Sidebar Toggle (Desktop Collapse & Mobile Off-canvas Drawer)
 function toggleSidebar() {
     const layout = document.querySelector(".workspace-layout");
     const sidebar = document.getElementById("sidebar-margin");
     const backdrop = document.getElementById("sidebar-backdrop");
     
     if (window.innerWidth <= 768) {
-        if (sidebar) {
-            sidebar.classList.toggle("mobile-open");
-        }
-        if (backdrop) {
-            backdrop.classList.toggle("active");
-        }
+        if (sidebar) sidebar.classList.toggle("mobile-open");
+        if (backdrop) backdrop.classList.toggle("active");
     } else {
-        if (layout) {
-            layout.classList.toggle("sidebar-collapsed");
-        }
+        if (layout) layout.classList.toggle("sidebar-collapsed");
     }
 }
 
@@ -133,7 +314,6 @@ function closeMobileSidebar() {
     }
 }
 
-// Fullscreen API Toggle
 function toggleFullScreen() {
     if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen().catch(err => {
@@ -146,7 +326,6 @@ function toggleFullScreen() {
     }
 }
 
-// Admin Sub-tabs
 function switchAdminTab(tabKey) {
     document.querySelectorAll(".subnav-item").forEach(b => b.classList.remove("active"));
     document.querySelectorAll(".subtab-pane").forEach(p => p.classList.remove("active"));
@@ -156,17 +335,21 @@ function switchAdminTab(tabKey) {
     document.getElementById(`admintab-${tabKey}`).classList.add("active");
 }
 
-// Quick Prompt Sender
 function sendQuickPrompt(text) {
     const qInput = document.getElementById("query-input");
     if (qInput) {
         qInput.value = text;
         const form = document.getElementById("chat-form");
-        form.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
+        if (form) {
+            form.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
+        }
     }
 }
 
-// Load Ingested Documents
+// ==========================================================================
+// Document Scope & Document Management
+// ==========================================================================
+
 async function loadDocuments() {
     try {
         const res = await fetch(`${API_BASE}/documents`);
@@ -174,67 +357,99 @@ async function loadDocuments() {
             const data = await res.json();
             const docs = data.documents || [];
             
-            // Badge & Footer updates
-            const badge = document.getElementById("doc-count-badge");
-            if (badge) badge.textContent = `${docs.length} files`;
-            const footerInfo = document.getElementById("footer-doc-info");
-            if (footerInfo) footerInfo.textContent = `${docs.length} documents in memory`;
-
-            // Populate user dropdown
-            const userSelect = document.getElementById("user-doc-select");
-            const previousVal = userSelect.value;
-            userSelect.innerHTML = '<option value="All Documents">All Ingested Documents</option>';
-            docs.forEach(d => {
-                const opt = document.createElement("option");
-                opt.value = d;
-                opt.textContent = d;
-                userSelect.appendChild(opt);
-            });
-            if (docs.includes(previousVal)) {
-                userSelect.value = previousVal;
-            }
-            onScopeChange();
-
-            // Populate admin list
-            const adminList = document.getElementById("documents-list");
-            if (adminList) {
-                adminList.innerHTML = "";
-                if (docs.length === 0) {
-                    adminList.innerHTML = '<p class="card-subtext">No documents in the database.</p>';
-                } else {
-                    docs.forEach(d => {
-                        const item = document.createElement("div");
-                        item.className = "repo-item";
-                        item.innerHTML = `
-                            <span class="repo-item-name">📄 ${d}</span>
-                            <button class="btn btn-danger btn-sm" onclick="deleteDocument('${d}')">Delete</button>
-                        `;
-                        adminList.appendChild(item);
-                    });
+            // 1. Update user portal select dropdown
+            const select = document.getElementById("user-doc-select");
+            if (select) {
+                const currentVal = select.value;
+                select.innerHTML = '<option value="All Documents">All System Knowledge</option>';
+                docs.forEach(doc => {
+                    const opt = document.createElement("option");
+                    opt.value = doc;
+                    opt.textContent = doc;
+                    select.appendChild(opt);
+                });
+                if (docs.includes(currentVal)) {
+                    select.value = currentVal;
                 }
             }
+
+            // 2. Update doc count badge
+            const badge = document.getElementById("doc-count-badge");
+            if (badge) {
+                badge.textContent = `${docs.length} files`;
+            }
+
+            // 3. Update admin list table
+            renderAdminDocList(docs);
+            onScopeChange();
         }
     } catch (e) {
         console.error("Failed to load documents:", e);
     }
 }
 
+function renderAdminDocList(docs) {
+    const listEl = document.getElementById("admin-doc-list");
+    if (!listEl) return;
+
+    if (docs.length === 0) {
+        listEl.innerHTML = `
+            <div class="empty-state">
+                <p>No documents in system knowledge repository yet.</p>
+            </div>
+        `;
+        return;
+    }
+
+    let html = `
+        <div class="doc-table">
+            <div class="table-head">
+                <span>Filename</span>
+                <span>Type</span>
+                <span style="text-align: right;">Action</span>
+            </div>
+    `;
+
+    docs.forEach(doc => {
+        const ext = doc.split('.').pop().toUpperCase();
+        html += `
+            <div class="table-row">
+                <span class="doc-name">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                    ${escapeHtml(doc)}
+                </span>
+                <span class="doc-type">${ext}</span>
+                <span class="doc-action">
+                    <button class="btn-delete" onclick="deleteDocument('${escapeHtml(doc)}')">Delete</button>
+                </span>
+            </div>
+        `;
+    });
+
+    html += `</div>`;
+    listEl.innerHTML = html;
+}
+
 function onScopeChange() {
-    const sel = document.getElementById("user-doc-select");
+    const select = document.getElementById("user-doc-select");
     const indicator = document.getElementById("scope-indicator");
-    if (sel && indicator) {
-        indicator.textContent = `Scope: ${sel.value}`;
+    if (select && indicator) {
+        const val = select.value;
+        indicator.textContent = `Scope: ${val}`;
     }
 }
 
-// User Document Upload
+// ==========================================================================
+// User Attached File (Session Scope) & Admin Upload (Permanent)
+// ==========================================================================
+
 async function handleUserUpload() {
     const fileInput = document.getElementById("user-file-input");
     const statusBox = document.getElementById("upload-status");
     const btn = document.getElementById("btn-upload-user");
 
-    if (!fileInput.files || fileInput.files.length === 0) {
-        showAlert(statusBox, "Please select a file first.", "error");
+    if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+        showAlert(statusBox, "Please choose a file to attach.", "error");
         return;
     }
 
@@ -243,26 +458,36 @@ async function handleUserUpload() {
     formData.append("file", file);
 
     btn.disabled = true;
-    showAlert(statusBox, `Ingesting and vectorizing ${file.name}...`, "info");
+    showAlert(statusBox, `Parsing and reading ${file.name}...`, "info");
 
     try {
-        const res = await fetch(`${API_BASE}/documents/upload`, {
+        const res = await fetch(`${API_BASE}/documents/parse-user-file`, {
             method: "POST",
             body: formData
         });
 
         if (res.ok) {
             const data = await res.json();
-            showAlert(statusBox, `Ingested: ${data.filename} (${data.chunks} chunks)`, "success");
+            showAlert(statusBox, `Attached: ${data.filename} (${data.pages} pages)`, "success");
             fileInput.value = "";
-            document.getElementById("user-chosen-file").textContent = "Choose file to ingest";
-            
-            await loadDocuments();
-            document.getElementById("user-doc-select").value = data.filename;
-            onScopeChange();
+            document.getElementById("user-chosen-file").textContent = "Choose file to attach";
+
+            // Save to current conversation
+            const conv = getCurrentConversation();
+            conv.userDoc = {
+                filename: data.filename,
+                text: data.text,
+                pages: data.pages,
+                char_count: data.char_count
+            };
+            saveConversations();
+            updateAttachedDocUi();
+            renderConversationList();
+
+            appendMessage("bot", `Đã đính kèm tài liệu **${data.filename}** (${data.pages} trang / ${data.char_count} ký tự). Tài liệu này được dùng riêng cho cuộc trò chuyện hiện tại và sẽ được đối chiếu với kiến thức hệ thống.`);
         } else {
             const err = await res.text();
-            showAlert(statusBox, `Upload failed: ${err}`, "error");
+            showAlert(statusBox, `Attachment failed: ${err}`, "error");
         }
     } catch (e) {
         showAlert(statusBox, `Connection error: ${e.message}`, "error");
@@ -271,15 +496,25 @@ async function handleUserUpload() {
     }
 }
 
-// Handle Query Submission
+// ==========================================================================
+// Query & Chat Messaging
+// ==========================================================================
+
 async function handleSendQuery(e) {
     e.preventDefault();
     const queryInput = document.getElementById("query-input");
     const query = queryInput.value.trim();
     if (!query) return;
 
+    const conv = getCurrentConversation();
     const scope = document.getElementById("user-doc-select").value;
     const filenameFilter = scope === "All Documents" ? null : scope;
+
+    // Update conversation title if it's the first question
+    if (conv.title === "Cuộc hội thoại mới" && query.length > 0) {
+        conv.title = query.slice(0, 32) + (query.length > 32 ? "..." : "");
+        renderConversationList();
+    }
 
     // Append User Message
     appendMessage("user", query);
@@ -296,6 +531,10 @@ async function handleSendQuery(e) {
         const payload = { question: query };
         if (filenameFilter) {
             payload.filename = filenameFilter;
+        }
+        if (conv.userDoc) {
+            payload.user_document_text = conv.userDoc.text;
+            payload.user_document_name = conv.userDoc.filename;
         }
 
         const res = await fetch(`${API_BASE}/query`, {
@@ -319,22 +558,136 @@ async function handleSendQuery(e) {
     }
 }
 
+function escapeHtml(text) {
+    if (!text) return "";
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+function renderMarkdown(rawText) {
+    if (!rawText) return "";
+    let text = escapeHtml(rawText);
+
+    // Separate inline items
+    text = text.replace(/([.!?:]|\*\*)\s+(\d+\.\s+)/g, "$1\n\n$2");
+    text = text.replace(/([.!?:]|\*\*)\s+([\*\-]\s+)/g, "$1\n\n$2");
+    text = text.replace(/:\s+(\*\s+\*\*)/g, ":\n\n$1");
+
+    // Code blocks
+    text = text.replace(/```([\s\S]*?)```/g, (match, code) => `<pre class="code-block"><code>${code.trim()}</code></pre>`);
+    text = text.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
+
+    // Bold
+    text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    text = text.replace(/__(.*?)__/g, '<strong>$1</strong>');
+
+    // Headers
+    text = text.replace(/^### (.*$)/gim, '<h4 class="md-h4">$1</h4>');
+    text = text.replace(/^## (.*$)/gim, '<h3 class="md-h3">$1</h3>');
+    text = text.replace(/^# (.*$)/gim, '<h2 class="md-h2">$1</h2>');
+
+    const lines = text.split("\n");
+    let result = [];
+    let listStack = [];
+
+    function closeAllLists() {
+        while (listStack.length > 0) {
+            const tag = listStack.pop();
+            result.push(`</${tag}>`);
+        }
+    }
+
+    for (let i = 0; i < lines.length; i++) {
+        let line = lines[i].trim();
+        if (!line) continue;
+
+        const ulMatch = line.match(/^[\*\-]\s+(.*)$/);
+        const olMatch = line.match(/^(\d+)\.\s+(.*)$/);
+
+        if (ulMatch) {
+            let content = ulMatch[1];
+            content = content.replace(/(^|[^\*])\*([^\*]+)\*([^\*]|$)/g, '$1<em>$2</em>$3');
+            if (listStack.length === 0 || listStack[listStack.length - 1] !== "ul") {
+                if (listStack.includes("ol")) {
+                    result.push('<ul class="md-ul">');
+                    listStack.push("ul");
+                } else {
+                    closeAllLists();
+                    result.push('<ul class="md-ul">');
+                    listStack.push("ul");
+                }
+            }
+            result.push(`<li>${content}</li>`);
+        } else if (olMatch) {
+            let content = olMatch[2];
+            content = content.replace(/(^|[^\*])\*([^\*]+)\*([^\*]|$)/g, '$1<em>$2</em>$3');
+            while (listStack.length > 0 && listStack[listStack.length - 1] === "ul") {
+                result.push("</ul>");
+                listStack.pop();
+            }
+            if (listStack.length === 0 || listStack[listStack.length - 1] !== "ol") {
+                closeAllLists();
+                result.push('<ol class="md-ol">');
+                listStack.push("ol");
+            }
+            result.push(`<li>${content}</li>`);
+        } else {
+            closeAllLists();
+            line = line.replace(/(^|[^\*])\*([^\*]+)\*([^\*]|$)/g, '$1<em>$2</em>$3');
+            if (line.startsWith("<h2") || line.startsWith("<h3") || line.startsWith("<h4") || line.startsWith("<pre")) {
+                result.push(line);
+            } else {
+                result.push(`<p class="md-p">${line}</p>`);
+            }
+        }
+    }
+
+    closeAllLists();
+    return result.join("\n");
+}
+
 function appendMessage(role, content, sources = null, id = null) {
+    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    appendMessageToDom(role, content, sources, id, timestamp);
+
+    // Save to active conversation messages
+    if (!id || !id.startsWith("msg-")) {
+        const conv = getCurrentConversation();
+        conv.messages.push({ role, content, sources, timestamp });
+        saveConversations();
+    }
+}
+
+function appendMessageToDom(role, content, sources = null, id = null, timestamp = null) {
     const thread = document.getElementById("chat-thread");
+    if (!thread) return;
+
     const item = document.createElement("div");
     item.className = `chat-item ${role}-turn`;
     if (id) item.id = id;
+
+    const time = timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     const header = document.createElement("div");
     header.className = "item-header";
     header.innerHTML = `
         <span class="role-badge">${role === "user" ? "You" : "Assistant"}</span>
-        <span class="time-stamp">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+        <span class="time-stamp">${time}</span>
     `;
 
     const body = document.createElement("div");
     body.className = "item-body";
-    body.textContent = content;
+    if (role === "user") {
+        body.textContent = content;
+    } else {
+        body.innerHTML = renderMarkdown(content);
+    }
 
     item.appendChild(header);
     item.appendChild(body);
@@ -352,19 +705,28 @@ function appendMessage(role, content, sources = null, id = null) {
 
 function updateBotMessage(id, content, sources = null) {
     const msgEl = document.getElementById(id);
-    if (!msgEl) return;
+    if (msgEl) {
+        const body = msgEl.querySelector(".item-body");
+        if (body) {
+            body.innerHTML = renderMarkdown(content);
+        }
 
-    const body = msgEl.querySelector(".item-body");
-    if (body) {
-        body.textContent = content;
+        const oldCite = msgEl.querySelector(".citation-box");
+        if (oldCite) oldCite.remove();
+
+        if (sources && sources.length > 0) {
+            const cite = document.createElement("div");
+            cite.className = "citation-box";
+            cite.innerHTML = "<strong>Source:</strong> " + sources.map(s => `${s.filename} (p.${s.page})`).join(", ");
+            msgEl.appendChild(cite);
+        }
     }
 
-    if (sources && sources.length > 0) {
-        const cite = document.createElement("div");
-        cite.className = "citation-box";
-        cite.innerHTML = "<strong>Source:</strong> " + sources.map(s => `${s.filename} (p.${s.page})`).join(", ");
-        msgEl.appendChild(cite);
-    }
+    // Save final message to active conversation
+    const conv = getCurrentConversation();
+    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    conv.messages.push({ role: "bot", content, sources, timestamp });
+    saveConversations();
 
     scrollCanvasToBottom();
 }
@@ -372,7 +734,6 @@ function updateBotMessage(id, content, sources = null) {
 function scrollCanvasToBottom() {
     const canvas = document.getElementById("canvas-scroll");
     if (canvas) {
-        // Immediate scroll + delayed smooth frame to account for font reflow
         canvas.scrollTop = canvas.scrollHeight;
         requestAnimationFrame(() => {
             canvas.scrollTo({ top: canvas.scrollHeight, behavior: 'smooth' });
@@ -381,23 +742,26 @@ function scrollCanvasToBottom() {
 }
 
 function clearChat() {
-    const thread = document.getElementById("chat-thread");
-    thread.innerHTML = `
-        <div class="chat-item bot-turn">
-            <div class="item-header">
-                <span class="role-badge">Assistant</span>
-                <span class="time-stamp">TDnook Reader</span>
-            </div>
-            <div class="item-body">
-                <p>Cuộc trò chuyện đã được làm mới. Hãy tải lên tài liệu cá nhân hoặc đặt câu hỏi về các tài liệu đã nạp.</p>
-            </div>
-        </div>
-    `;
+    const conv = getCurrentConversation();
+    conv.messages = [
+        {
+            role: "bot",
+            content: "Cuộc trò chuyện đã được làm mới. Hãy đính kèm tài liệu cá nhân để đối chiếu với kiến thức hệ thống hoặc đặt câu hỏi trực tiếp.",
+            sources: null,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+    ];
+    saveConversations();
+    renderActiveConversation();
+
     const qInput = document.getElementById("query-input");
     if (qInput) qInput.focus();
 }
 
-// --- ADMIN FEATURES ---
+// ==========================================================================
+// Admin Rules & Features
+// ==========================================================================
+
 async function loadAdminRules() {
     try {
         const res = await fetch(`${API_BASE}/rules`);
@@ -465,7 +829,7 @@ async function handleAdminUpload() {
         return;
     }
 
-    showAlert(statusBox, `Ingesting ${fileInput.files.length} file(s)...`, "info");
+    showAlert(statusBox, `Ingesting ${fileInput.files.length} file(s) into system knowledge...`, "info");
 
     for (let file of fileInput.files) {
         const fd = new FormData();
@@ -477,7 +841,7 @@ async function handleAdminUpload() {
         }
     }
 
-    showAlert(statusBox, "Files ingested successfully.", "success");
+    showAlert(statusBox, "Files ingested successfully into system knowledge base.", "success");
     fileInput.value = "";
     loadDocuments();
 }
@@ -516,7 +880,7 @@ async function handleManualIngest() {
 }
 
 async function deleteDocument(filename) {
-    if (!confirm(`Delete '${filename}' from knowledge base?`)) return;
+    if (!confirm(`Delete '${filename}' from system knowledge base?`)) return;
     try {
         const res = await fetch(`${API_BASE}/documents/${encodeURIComponent(filename)}`, { method: "DELETE" });
         if (res.ok) {
@@ -528,13 +892,13 @@ async function deleteDocument(filename) {
 }
 
 async function handleResetDatabase() {
-    if (!confirm("Are you sure you want to delete ALL documents and reset vector DB?")) return;
+    if (!confirm("Are you sure you want to delete ALL documents and reset system vector DB?")) return;
     try {
         const res = await fetch(`${API_BASE}/documents`, { method: "DELETE" });
         if (res.ok) {
             loadDocuments();
             clearChat();
-            alert("Database cleared.");
+            alert("System knowledge database cleared.");
         }
     } catch (e) {
         alert("Failed to reset: " + e.message);

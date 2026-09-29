@@ -99,10 +99,59 @@ def upload_raw_text(payload: dict = Body(...)):
         logger.error(f"Error ingesting raw text: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+from app.models.schemas import QueryRequest, QueryResponse, UploadResponse, UserFileParseResponse, Source
+from app.rag.loader import extract_pages_from_file
+
+TEMP_USER_DIR = os.path.join(os.getcwd(), "data", "temp_user_uploads")
+os.makedirs(TEMP_USER_DIR, exist_ok=True)
+
+@router.post("/documents/parse-user-file", response_model=UserFileParseResponse)
+async def parse_user_file(file: UploadFile = File(...)):
+    """
+    Endpoint for User Portal: Parses user attached files/images (via OCR or Native) 
+    temporarily for conversation context WITHOUT saving into permanent system knowledge base.
+    """
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in SUPPORTED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file format '{ext}'. Supported: {', '.join(sorted(SUPPORTED_EXTENSIONS))}"
+        )
+        
+    temp_path = os.path.join(TEMP_USER_DIR, f"temp_{os.getpid()}_{file.filename}")
+    try:
+        with open(temp_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            
+        logger.info(f"Parsing temporary user document: {file.filename}")
+        pages = extract_pages_from_file(temp_path)
+        
+        if not pages:
+            raise ValueError(f"Could not extract readable text or image content from {file.filename}.")
+            
+        full_text = "\n\n".join([p["text"].strip() for p in pages if p.get("text", "").strip()])
+        
+        return UserFileParseResponse(
+            status="success",
+            filename=file.filename,
+            text=full_text,
+            pages=len(pages),
+            char_count=len(full_text)
+        )
+    except Exception as e:
+        logger.error(f"Error parsing user document: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except Exception:
+                pass
+
 @router.post("/documents/upload", response_model=UploadResponse)
 async def upload_document(file: UploadFile = File(...)):
     """
-    Endpoint to upload and ingest multi-format files (PDF, Images, CSV, Excel, Word, TXT).
+    Admin Endpoint to permanently upload and ingest multi-format files into system vector store.
     """
     ext = os.path.splitext(file.filename)[1].lower()
     if ext not in SUPPORTED_EXTENSIONS:
@@ -118,9 +167,9 @@ async def upload_document(file: UploadFile = File(...)):
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
             
-        logger.info(f"Saved uploaded file to {file_path}")
+        logger.info(f"Admin saved uploaded file to {file_path}")
         
-        # Process and ingest multi-format document
+        # Process and ingest multi-format document into permanent system knowledge
         num_chunks = ingest_document(file_path)
         
         return UploadResponse(
@@ -135,10 +184,17 @@ async def upload_document(file: UploadFile = File(...)):
 @router.post("/query", response_model=QueryResponse)
 async def query_documents(request: QueryRequest):
     """
-    Endpoint to query the ingested documents (optionally filtered by filename).
+    Endpoint to query documents with support for:
+    1. Active user attached document
+    2. Cross-referencing with system knowledge vector DB
     """
     try:
-        result = query_pipeline(request.question, filename=request.filename)
+        result = query_pipeline(
+            request.question,
+            filename=request.filename,
+            user_document_text=request.user_document_text,
+            user_document_name=request.user_document_name
+        )
         
         sources = [Source(**s) for s in result["sources"]]
         

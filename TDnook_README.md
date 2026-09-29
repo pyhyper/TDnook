@@ -1,12 +1,11 @@
-# DocuRAG — AI Document Q&A with RAG
+# TDnook — Minimalist Paper Document Reader & Assistant
 
 ## 1. Overview
 
-**DocuRAG** is a document question-answering system built with **Retrieval-Augmented Generation (RAG)**.
+**TDnook** is a minimalist paper document reader and intelligent question-answering system built with **Retrieval-Augmented Generation (RAG)**.
 
-The system allows users to upload PDF documents, process and index their content in a **vector database**, retrieve the most relevant information based on a user's question, and generate an answer using an **LLM**.
+The system allows users to upload documents (PDF, DOCX, XLSX, images, and text), process and index their content in a **vector database**, retrieve the most relevant context based on queries, and generate grounded answers using an **LLM** with page-level citations.
 
-The main goal is to demonstrate the fundamental architecture of a modern **LLM + RAG application**.
 
 ```text
 PDF Document
@@ -586,8 +585,9 @@ After completing this project, you should understand:
 - [ ] Docker
 - [ ] Production deployment
 
-## 20. Portfolio Description
+## 20. Project Overview
+ 
+**TDnook** is a minimalist paper document reader and Retrieval-Augmented Generation (RAG) assistant for document-based question answering. The system processes multi-format documents (PDF, Word, Excel, images, text), generates vector embeddings, stores them in ChromaDB, performs semantic retrieval, and leverages local or cloud LLMs to generate grounded responses with exact source citations and strict business rules.
+ 
+**Key technologies:** Python, FastAPI, ChromaDB, EasyOCR, Sentence-Transformers, Local LLMs (MLX, llama.cpp), Gemini API, Minimalist Paper Web Canvas.
 
-**DocuRAG** is a Retrieval-Augmented Generation (RAG) application for document-based question answering. The system processes PDF documents, generates embeddings, stores them in a vector database, performs semantic retrieval, and uses an LLM to generate grounded responses with source citations.
-
-**Key technologies:** Python, FastAPI, ChromaDB, Embeddings, Gemini, RAG, Semantic Search, Vector Database, Streamlit.

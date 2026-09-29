@@ -71,14 +71,22 @@ def check_guardrails_and_faq(query: str) -> dict | None:
             }
             
     # 2. Check direct FAQ
-    faqs = rules.get("direct_faq", [])
-    for faq in faqs:
-        keywords = faq.get("keywords", [])
-        for kw in keywords:
-            if re.search(r'\b' + re.escape(kw.lower()) + r'\b', query_lower) or kw.lower() in query_lower:
-                return {
-                    "answer": faq.get("answer", ""),
-                    "sources": [{"filename": "[Admin Rule: Direct FAQ]", "page": 1}]
-                }
+    # If the user is specifically querying their own document/CV (e.g., "cua toi", "trong cv", "ung vien", "ho so"),
+    # do not intercept with company hotline FAQ.
+    personal_indicators = ["cua toi", "trong cv", "ung vien", "tan dao", "ca nhan", "ho so"]
+    is_personal_doc_query = any(pi in query_lower for pi in personal_indicators)
+    
+    if not is_personal_doc_query:
+        faqs = rules.get("direct_faq", [])
+        for faq in faqs:
+            keywords = faq.get("keywords", [])
+            for kw in keywords:
+                kw_clean = kw.lower().strip()
+                pattern = r'\b' + re.escape(kw_clean) + r'\b'
+                if re.search(pattern, query_lower) or (len(kw_clean) >= 4 and kw_clean in query_lower):
+                    return {
+                        "answer": faq.get("answer", ""),
+                        "sources": [{"filename": "[Quy định Admin: Direct FAQ]", "page": 1}]
+                    }
                 
     return None

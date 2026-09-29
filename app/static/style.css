@@ -390,6 +390,142 @@ html, body {
     border: 1px solid var(--border-light);
 }
 
+.sidebar-divider {
+    border: none;
+    border-top: 1px solid var(--border-light);
+    margin: 4px 0;
+    opacity: 0.7;
+}
+
+.btn-new-chat {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    padding: 9px 12px;
+}
+
+.badge-subtle {
+    background-color: transparent;
+    border: 1px solid var(--border-medium);
+    color: var(--text-secondary);
+}
+
+/* Conversation List */
+.conversation-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    max-height: 160px;
+    overflow-y: auto;
+    padding-right: 2px;
+    margin-top: 4px;
+}
+
+.conversation-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 10px;
+    border-radius: 5px;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-light);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: var(--font-sans);
+}
+
+.conversation-item:hover {
+    border-color: var(--border-medium);
+    background-color: var(--bg-surface);
+}
+
+.conversation-item.active {
+    border-color: var(--accent-ink);
+    background-color: var(--accent-highlight);
+    font-weight: 600;
+}
+
+.conv-info {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    gap: 2px;
+    flex: 1;
+}
+
+.conv-title {
+    font-size: 0.78rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.conv-time {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+}
+
+.btn-delete-conv {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 2px 4px;
+    opacity: 0.6;
+    border-radius: 3px;
+    transition: all 0.15s ease;
+}
+
+.btn-delete-conv:hover {
+    opacity: 1;
+    color: #c0392b;
+    background-color: rgba(192, 57, 43, 0.1);
+}
+
+/* Attached User Doc Chip */
+.attached-doc-container {
+    margin-bottom: 8px;
+}
+
+.attached-chip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: var(--accent-highlight);
+    border: 1px solid var(--border-medium);
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-family: var(--font-sans);
+    font-size: 0.78rem;
+}
+
+.attached-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-primary);
+    font-weight: 600;
+    max-width: 170px;
+}
+
+.btn-remove-chip {
+    background: none;
+    border: none;
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+    color: var(--text-secondary);
+    padding: 0 4px;
+}
+
+.btn-remove-chip:hover {
+    color: #c0392b;
+}
+
 .section-desc {
     font-family: var(--font-sans);
     font-size: 0.76rem;
@@ -603,13 +739,101 @@ html, body {
 .bot-turn .item-body {
     font-family: var(--font-serif);
     font-size: 1.05rem;
-    line-height: 1.72;
+    line-height: 1.75;
     color: var(--text-primary);
     word-break: break-word;
 }
 
+.item-body strong {
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.item-body em {
+    font-style: italic;
+}
+
+.item-body .md-p {
+    margin-bottom: 10px;
+}
+
+.item-body .md-p:last-child {
+    margin-bottom: 0;
+}
+
+.item-body .md-ul,
+.item-body .md-ol {
+    margin: 8px 0 12px 24px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.item-body .md-ul {
+    list-style-type: disc;
+}
+
+.item-body .md-ol {
+    list-style-type: decimal;
+}
+
+.item-body .md-ol .md-ul {
+    list-style-type: circle;
+    margin: 6px 0 6px 18px;
+}
+
+.item-body li {
+    line-height: 1.65;
+}
+
+.item-body .md-h2 {
+    font-family: var(--font-sans);
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin: 16px 0 8px 0;
+    color: var(--text-primary);
+}
+
+.item-body .md-h3 {
+    font-family: var(--font-sans);
+    font-size: 1.08rem;
+    font-weight: 600;
+    margin: 14px 0 6px 0;
+    color: var(--text-primary);
+}
+
+.item-body .md-h4 {
+    font-family: var(--font-sans);
+    font-size: 0.98rem;
+    font-weight: 600;
+    margin: 12px 0 4px 0;
+    color: var(--text-primary);
+}
+
+.item-body .inline-code {
+    background-color: var(--accent-highlight);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.88em;
+    border: 1px solid var(--border-light);
+}
+
+.item-body .code-block {
+    background-color: var(--bg-card);
+    padding: 12px 14px;
+    border-radius: 6px;
+    font-family: var(--font-mono);
+    font-size: 0.88rem;
+    overflow-x: auto;
+    margin: 10px 0;
+    border: 1px solid var(--border-light);
+    line-height: 1.45;
+}
+
 .citation-box {
-    margin-top: 8px;
+    margin-top: 10px;
     background-color: var(--bg-sidebar);
     border-left: 2px solid var(--accent-ink);
     padding: 8px 12px;

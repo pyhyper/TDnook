@@ -76,11 +76,15 @@ def ingest_raw_text(title: str, text: str) -> int:
     logger.info(f"Ingested manual text '{clean_title}' ({len(chunks)} chunks).")
     return len(chunks)
 
-def query_pipeline(query: str, filename: str = None) -> dict:
+def query_pipeline(query: str, filename: str = None, user_document_text: str = None, user_document_name: str = None) -> dict:
     """
-    Full RAG pipeline with Business Rules, Guardrails & Strict-Mode Document Filter.
+    Full RAG pipeline with:
+    1. Business Guardrails & Direct FAQ
+    2. Active User Document (Session Base)
+    3. Cross-referencing with System Knowledge Vector Store
+    4. Business Rules Strict Mode Enforcement
     """
-    logger.info(f"Processing query: '{query}' (filter filename={filename})")
+    logger.info(f"Processing query: '{query}' (filter filename={filename}, user_doc={user_document_name})")
     
     # 1. Check Business Guardrails & Direct FAQ
     guardrail_res = check_guardrails_and_faq(query)
@@ -88,24 +92,39 @@ def query_pipeline(query: str, filename: str = None) -> dict:
         logger.info("Query answered directly by Business Guardrail / FAQ Rule.")
         return guardrail_res
         
-    # 2. Retrieve relevant chunks from Vector DB
+    # 2. Retrieve relevant chunks from Vector DB (System Knowledge)
     retrieved_chunks = retrieve_top_k(query, filename=filename)
-    logger.info(f"Retrieved {len(retrieved_chunks)} relevant chunks.")
+    logger.info(f"Retrieved {len(retrieved_chunks)} relevant system knowledge chunks.")
     
     rules = get_business_rules()
     strict_mode = rules.get("strict_mode", True)
     no_answer_msg = rules.get("no_answer_response", "Xin lỗi, thông tin này không có trong tài liệu được cung cấp.")
     
-    if strict_mode and not retrieved_chunks:
+    # If in strict mode and neither user document nor system knowledge has content
+    if strict_mode and not retrieved_chunks and not user_document_text:
         return {
             "answer": no_answer_msg,
             "sources": []
         }
     
-    # 3. Generate answer using LLM guided by Business Rules
-    answer = generate_answer(query, retrieved_chunks)
+    # 3. Generate answer using LLM guided by Business Rules and Multi-Language constraints
+    answer = generate_answer(
+        query,
+        retrieved_chunks,
+        user_document_text=user_document_text,
+        user_document_name=user_document_name
+    )
     
     sources = []
+    
+    # Add User Document as source if used
+    if user_document_name and user_document_text:
+        sources.append({
+            "filename": f"[User File] {user_document_name}",
+            "page": 1
+        })
+        
+    # Add System Knowledge sources
     for chunk in retrieved_chunks:
         sources.append({
             "filename": chunk["metadata"]["filename"],

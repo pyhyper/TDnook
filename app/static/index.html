@@ -1,14 +1,18 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TDnook — Minimalist Paper Reader</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,300;0,7..72,400;0,7..72,500;0,7..72,600;1,7..72,400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css?v=20260827_03">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,300;0,7..72,400;0,7..72,500;0,7..72,600;1,7..72,400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css?v=20260830_05">
 </head>
+
 <body class="theme-sepia">
     <!-- Full-bleed Paper Canvas -->
     <div class="kindle-app">
@@ -16,7 +20,11 @@
         <header class="app-header">
             <div class="header-brand">
                 <button class="icon-btn" id="btn-toggle-sidebar" onclick="toggleSidebar()" title="Toggle Sidebar">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="9" y1="3" x2="9" y2="21"></line>
+                    </svg>
                 </button>
                 <div class="brand-text">
                     <span class="brand-name">TDnook</span>
@@ -26,13 +34,15 @@
 
             <!-- Portal Switcher -->
             <nav class="portal-nav">
-                <button class="nav-item active" id="nav-user" onclick="switchPortal('user')">User Reading & Chat</button>
+                <button class="nav-item active" id="nav-user" onclick="switchPortal('user')">User Reading &
+                    Chat</button>
                 <button class="nav-item" id="nav-admin" onclick="switchPortal('admin')">Admin Business Rules</button>
             </nav>
 
             <!-- Quick Controls -->
             <div class="header-actions">
-                <select id="texture-selector" class="texture-select" onchange="onTextureChange()" title="Chọn thớ vân giấy">
+                <select id="texture-selector" class="texture-select" onchange="onTextureChange()"
+                    title="Chọn thớ vân giấy">
                     <option value="texture-kindle">Kindle Micro-Grain</option>
                     <option value="texture-parchment">Book Parchment (Giấy Dó)</option>
                     <option value="texture-linen">Woven Linen (Giấy Sợi Vải)</option>
@@ -40,12 +50,20 @@
                 </select>
 
                 <div class="tone-picker">
-                    <button class="tone-btn tone-sepia active" onclick="setPaperTheme('theme-sepia')" title="Sepia Warm Paper"></button>
-                    <button class="tone-btn tone-eink" onclick="setPaperTheme('theme-eink')" title="E-Ink Neutral Paper"></button>
-                    <button class="tone-btn tone-dark" onclick="setPaperTheme('theme-dark')" title="Dark Ink Mode"></button>
+                    <button class="tone-btn tone-sepia active" onclick="setPaperTheme('theme-sepia')"
+                        title="Sepia Warm Paper"></button>
+                    <button class="tone-btn tone-eink" onclick="setPaperTheme('theme-eink')"
+                        title="E-Ink Neutral Paper"></button>
+                    <button class="tone-btn tone-dark" onclick="setPaperTheme('theme-dark')"
+                        title="Dark Ink Mode"></button>
                 </div>
                 <button class="action-btn" id="btn-fullscreen" onclick="toggleFullScreen()" title="Full Screen Mode">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path
+                            d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3">
+                        </path>
+                    </svg>
                 </button>
             </div>
 
@@ -59,35 +77,77 @@
                     <!-- Collapsible Sidebar / Margin -->
                     <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="toggleSidebar()"></div>
                     <aside class="sidebar-margin" id="sidebar-margin">
+                        <!-- 1. Conversation Management -->
+                        <div class="sidebar-section">
+                            <button class="btn btn-primary btn-block btn-new-chat" id="btn-new-chat"
+                                onclick="createNewConversation()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
+                                <span>New Conversation</span>
+                            </button>
+
+                            <div class="section-title-row" style="margin-top: 14px;">
+                                <h3 class="section-title">Chat History</h3>
+                                <span class="badge" id="conv-count-badge">0 chats</span>
+                            </div>
+                            <div class="conversation-list" id="conversation-list">
+                                <!-- Populated dynamically by JS -->
+                            </div>
+                        </div>
+
+                        <hr class="sidebar-divider">
+
+                        <!-- 2. User Attached File (Session Scope / Not stored permanently) -->
                         <div class="sidebar-section">
                             <div class="section-title-row">
-                                <h3 class="section-title">Upload Document</h3>
-                                <span class="badge" id="doc-count-badge">0 files</span>
+                                <h3 class="section-title">Attached File (Session)</h3>
+                                <span class="badge badge-subtle">User Doc</span>
                             </div>
-                            <p class="section-desc">PDF, Word (.docx), Excel (.xlsx), CSV, Images (OCR), Text</p>
-                            
+                            <p class="section-desc">Upload PDF, Image (OCR), Word, Excel to chat. Used in this session
+                                and cross-referenced with system knowledge.</p>
+
+                            <div id="attached-doc-info" class="attached-doc-container" style="display: none;">
+                                <div class="attached-chip">
+                                    <span class="attached-name" id="attached-file-name">filename.pdf</span>
+                                    <button class="btn-remove-chip" onclick="removeAttachedUserDoc()"
+                                        title="Remove file">×</button>
+                                </div>
+                            </div>
+
                             <div class="dropzone" id="user-dropzone">
-                                <input type="file" id="user-file-input" accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx,.xls,.csv,.txt,.md">
+                                <input type="file" id="user-file-input"
+                                    accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx,.xls,.csv,.txt,.md">
                                 <label for="user-file-input" class="dropzone-box">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                                    <span class="dropzone-label" id="user-chosen-file">Choose file to ingest</span>
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="17 8 12 3 7 8"></polyline>
+                                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                                    </svg>
+                                    <span class="dropzone-label" id="user-chosen-file">Choose file to attach</span>
                                 </label>
                             </div>
-                            <button class="btn btn-primary btn-block" id="btn-upload-user" onclick="handleUserUpload()">Ingest Document</button>
+                            <button class="btn btn-outline btn-block" id="btn-upload-user" onclick="handleUserUpload()"
+                                style="margin-top: 8px;">Attach & Parse File</button>
                             <div id="upload-status" class="alert-box"></div>
                         </div>
 
-                        <div class="sidebar-section">
-                            <h3 class="section-title">Document Scope</h3>
-                            <p class="section-desc">Restricts answers strictly to selected file</p>
-                            <select id="user-doc-select" class="select-box" onchange="onScopeChange()">
-                                <option value="All Documents">All Ingested Documents</option>
-                            </select>
-                            <div class="active-scope-tag" id="scope-indicator">Scope: All Documents</div>
-                        </div>
+                        <hr class="sidebar-divider">
 
-                        <div class="sidebar-section sidebar-footer-actions">
-                            <button class="btn btn-outline btn-block" onclick="clearChat()">Clear Conversation</button>
+                        <!-- 3. System Knowledge Scope (Admin Repository) -->
+                        <div class="sidebar-section">
+                            <div class="section-title-row">
+                                <h3 class="section-title">System Knowledge Scope</h3>
+                                <span class="badge" id="doc-count-badge">0 files</span>
+                            </div>
+                            <p class="section-desc">Cross-reference with Admin knowledge base</p>
+                            <select id="user-doc-select" class="select-box" onchange="onScopeChange()">
+                                <option value="All Documents">All System Knowledge</option>
+                            </select>
+                            <div class="active-scope-tag" id="scope-indicator">Scope: All System Knowledge</div>
                         </div>
                     </aside>
 
@@ -101,7 +161,9 @@
                                         <span class="time-stamp">TDnook Reader</span>
                                     </div>
                                     <div class="item-body">
-                                        <p>Chào bạn. Hãy tải lên tài liệu cá nhân hoặc đặt câu hỏi về các tài liệu đã nạp. Tôi sẽ trả lời ngắn gọn, trực diện và chính xác dựa trên nội dung tài liệu theo đúng quy chuẩn.</p>
+                                        <p>Chào bạn. Hãy tải lên tài liệu cá nhân hoặc đặt câu hỏi về các tài liệu đã
+                                            nạp. Tôi sẽ trả lời ngắn gọn, trực diện và chính xác dựa trên nội dung tài
+                                            liệu theo đúng quy chuẩn.</p>
                                     </div>
                                 </div>
                             </div>
@@ -110,14 +172,26 @@
                         <!-- Sticky Notebook Prompt Bar -->
                         <div class="prompt-bar-container">
                             <div class="quick-prompts" id="quick-prompts">
-                                <button class="chip-btn" onclick="sendQuickPrompt('Tóm tắt nội dung chính của tài liệu')">Tóm tắt tài liệu</button>
-                                <button class="chip-btn" onclick="sendQuickPrompt('Kinh nghiệm làm việc và kỹ năng chính')">Kinh nghiệm & Kỹ năng</button>
-                                <button class="chip-btn" onclick="sendQuickPrompt('Các điểm lưu ý hoặc chính sách quan trọng')">Chính sách quan trọng</button>
+                                <button class="chip-btn"
+                                    onclick="sendQuickPrompt('Tóm tắt nội dung chính của tài liệu')">Tóm tắt tài
+                                    liệu</button>
+                                <button class="chip-btn"
+                                    onclick="sendQuickPrompt('Kinh nghiệm làm việc và kỹ năng chính')">Kinh nghiệm & Kỹ
+                                    năng</button>
+                                <button class="chip-btn"
+                                    onclick="sendQuickPrompt('Các điểm lưu ý hoặc chính sách quan trọng')">Chính sách
+                                    quan trọng</button>
                             </div>
                             <form id="chat-form" class="prompt-form" onsubmit="handleSendQuery(event)">
-                                <input type="text" id="query-input" placeholder="Ask a question about the document..." autocomplete="off">
-                                <button type="submit" id="btn-submit" class="btn btn-primary submit-icon-btn" title="Send Question">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                                <input type="text" id="query-input" placeholder="Ask a question about the document..."
+                                    autocomplete="off">
+                                <button type="submit" id="btn-submit" class="btn btn-primary submit-icon-btn"
+                                    title="Send Question">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                    </svg>
                                 </button>
                             </form>
                         </div>
@@ -129,8 +203,10 @@
             <section id="portal-admin" class="portal-view">
                 <div class="admin-workspace">
                     <div class="admin-nav-bar">
-                        <button class="subnav-item active" onclick="switchAdminTab('rules')">1. Business Rules & Guardrails</button>
-                        <button class="subnav-item" onclick="switchAdminTab('ingest')">2. Ingest Policy Documents</button>
+                        <button class="subnav-item active" onclick="switchAdminTab('rules')">1. Business Rules &
+                            Guardrails</button>
+                        <button class="subnav-item" onclick="switchAdminTab('ingest')">2. Ingest Policy
+                            Documents</button>
                         <button class="subnav-item" onclick="switchAdminTab('manage')">3. Library Repository</button>
                     </div>
 
@@ -141,7 +217,8 @@
                                 <div class="switch-row">
                                     <div>
                                         <h4 class="card-heading">Strict Document-Only Mode</h4>
-                                        <p class="card-subtext">AI is strictly restricted to answering within provided documents. Rejects external questions.</p>
+                                        <p class="card-subtext">AI is strictly restricted to answering within provided
+                                            documents. Rejects external questions.</p>
                                     </div>
                                     <label class="toggle-switch">
                                         <input type="checkbox" id="rule-strict-mode" checked>
@@ -153,7 +230,8 @@
                             <div class="admin-card">
                                 <h4 class="card-heading">System Persona / Role</h4>
                                 <p class="card-subtext">Defines the identity and behavior of the assistant.</p>
-                                <input type="text" id="rule-system-role" class="text-input" value="Bạn là trợ lý AI chuyên nghiệp trả lời dựa trên tài liệu được cung cấp.">
+                                <input type="text" id="rule-system-role" class="text-input"
+                                    value="Bạn là trợ lý AI chuyên nghiệp trả lời dựa trên tài liệu được cung cấp.">
                             </div>
 
                             <div class="admin-card">
@@ -164,7 +242,8 @@
 
                             <div class="admin-card full-width">
                                 <h4 class="card-heading">Business Policies</h4>
-                                <p class="card-subtext">Mandatory rules applied to every response (one rule per line).</p>
+                                <p class="card-subtext">Mandatory rules applied to every response (one rule per line).
+                                </p>
                                 <textarea id="rule-policies" class="text-area" rows="4"></textarea>
                             </div>
 
@@ -192,24 +271,31 @@
                         <div class="grid-2col">
                             <div class="admin-card">
                                 <h4 class="card-heading">Upload Standard / Policy Documents</h4>
-                                <p class="card-subtext">Company guidelines, price lists, employee handbooks (PDF, Word, Excel, CSV, Images OCR, TXT).</p>
-                                <input type="file" id="admin-file-input" multiple accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx,.xls,.csv,.txt,.md" class="mt-2">
-                                <button class="btn btn-primary mt-3 btn-block" onclick="handleAdminUpload()">Ingest Selected Files</button>
+                                <p class="card-subtext">Company guidelines, price lists, employee handbooks (PDF, Word,
+                                    Excel, CSV, Images OCR, TXT).</p>
+                                <input type="file" id="admin-file-input" multiple
+                                    accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx,.xls,.csv,.txt,.md" class="mt-2">
+                                <button class="btn btn-primary mt-3 btn-block" onclick="handleAdminUpload()">Ingest
+                                    Selected Files</button>
                                 <div id="admin-upload-status" class="alert-box"></div>
                             </div>
 
                             <div class="admin-card">
                                 <h4 class="card-heading">Manual Policy Snippet Entry</h4>
-                                <p class="card-subtext">Type internal guidelines or notices directly without creating files.</p>
+                                <p class="card-subtext">Type internal guidelines or notices directly without creating
+                                    files.</p>
                                 <div class="form-field">
                                     <label for="manual-title">Title:</label>
-                                    <input type="text" id="manual-title" class="text-input" placeholder="e.g. Return_Policy_2026">
+                                    <input type="text" id="manual-title" class="text-input"
+                                        placeholder="e.g. Return_Policy_2026">
                                 </div>
                                 <div class="form-field mt-2">
                                     <label for="manual-content">Content:</label>
-                                    <textarea id="manual-content" class="text-area" rows="4" placeholder="Enter policy text..."></textarea>
+                                    <textarea id="manual-content" class="text-area" rows="4"
+                                        placeholder="Enter policy text..."></textarea>
                                 </div>
-                                <button class="btn btn-primary mt-3 btn-block" onclick="handleManualIngest()">Save Manual Policy</button>
+                                <button class="btn btn-primary mt-3 btn-block" onclick="handleManualIngest()">Save
+                                    Manual Policy</button>
                                 <div id="manual-status" class="alert-box"></div>
                             </div>
                         </div>
@@ -222,7 +308,8 @@
                                 <h4 class="card-heading">Ingested Knowledge Base</h4>
                                 <p class="card-subtext">All active documents currently serving RAG queries.</p>
                             </div>
-                            <button class="btn btn-danger" onclick="handleResetDatabase()">Reset Entire Database</button>
+                            <button class="btn btn-danger" onclick="handleResetDatabase()">Reset Entire
+                                Database</button>
                         </div>
                         <div id="documents-list" class="repo-list">
                             <!-- Items injected dynamically -->
@@ -244,6 +331,7 @@
         </footer>
     </div>
 
-    <script src="/static/app.js?v=20260827_03"></script>
+    <script src="/static/app.js?v=20260830_07"></script>
 </body>
+
 </html>

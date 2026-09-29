@@ -32,6 +32,11 @@ venv.bak/
 *.env
 ! .env.example
 
+# Private Linked Projects & Symlinks
+TDSpeLi
+TDSpeLi/
+
+
 # Heavy Large Language Model Weights & Binaries (>100MB)
 *.gguf
 *.bin
