@@ -1,6 +1,6 @@
 // ==========================================================================
-// DocuRAG — Minimalist Paper Web App Logic (Full-Screen & Kindle UX)
-// Supports Multi-Conversation History, User Session Documents & Cross-Referencing
+// TDnook — Minimalist Paper Web App Logic (Full-Screen & Kindle UX)
+// Supports Multi-Conversation History, User Session Documents & Bilingual i18n
 // ==========================================================================
 
 const API_BASE = "";
@@ -8,22 +8,243 @@ const API_BASE = "";
 let currentPortal = "user";
 let currentTheme = localStorage.getItem("docurag_theme") || "theme-sepia";
 let currentTexture = localStorage.getItem("docurag_texture") || "texture-kindle";
+let currentLang = localStorage.getItem("tdnook_lang") || "vi";
+
+// ==========================================================================
+// Bilingual i18n Dictionary (VI / EN) - Clean & Professional
+// ==========================================================================
+const I18N = {
+    vi: {
+        brandTag: "Trí Tuệ Tài Liệu",
+        navUser: "Đọc Sách & Trò Chuyện",
+        navAdmin: "Quy Định Doanh Nghiệp",
+        textureTitle: "Chọn chất liệu giấy",
+        textureKindle: "Kindle Micro-Grain",
+        textureParchment: "Book Parchment (Giấy Dó)",
+        textureLinen: "Woven Linen (Giấy Sợi Vải)",
+        textureSmooth: "Smooth Matte",
+        toneSepia: "Sepia Warm Paper",
+        toneEink: "E-Ink Neutral Paper",
+        toneDark: "Dark Ink Mode",
+        fullscreenTitle: "Chế độ toàn màn hình",
+        newChat: "Cuộc hội thoại mới",
+        chatHistory: "Lịch sử hội thoại",
+        chatsCount: (n) => `${n} cuộc trò chuyện`,
+        attachedTitle: "Tài liệu đính kèm (Phiên)",
+        attachedBadge: "File Người Dùng",
+        attachedDesc: "Tải lên PDF, Ảnh (OCR), Word, Excel để tra cứu tạm thời trong phiên này.",
+        chooseFile: "Chọn tài liệu đính kèm",
+        attachBtn: "Đính Kèm & Phân Tích",
+        scopeTitle: "Kho Kiến Thức Hệ Thống",
+        scopeBadge: (n) => `${n} tài liệu`,
+        scopeDesc: "Đối chiếu trực tiếp với kho dữ liệu mẫu của hệ thống",
+        allSystemKnowledge: "Toàn bộ tài liệu hệ thống",
+        scopeIndicator: (val) => `Phạm vi: ${val}`,
+        botWelcome: "Chào bạn. Hãy đính kèm tài liệu cá nhân để đối chiếu với kiến thức hệ thống hoặc đặt câu hỏi trực tiếp. Tôi sẽ trả lời ngắn gọn, chuẩn mực theo đúng ngôn ngữ của bạn.",
+        quickSummarize: "Tóm tắt tài liệu",
+        quickSkills: "Kinh nghiệm & Kỹ năng",
+        quickPolicy: "Chính sách quan trọng",
+        inputPlaceholder: "Đặt câu hỏi về tài liệu...",
+        sendTitle: "Gửi câu hỏi",
+        userRole: "Bạn",
+        botRole: "Trợ lý TDnook",
+        sourceLabel: "Nguồn trích dẫn",
+        pageLabel: "Trang",
+        searchingNotice: "Đang tra cứu ngữ cảnh tài liệu và đối chiếu quy tắc nghiệp vụ...",
+        adminTabRules: "1. Quy Định & Guardrails",
+        adminTabIngest: "2. Nạp Tài Liệu Mẫu",
+        adminTabManage: "3. Kho Dữ Liệu Thư Viện",
+        strictModeTitle: "Chế độ Tuân Thủ Tài Liệu Tuyệt Đối (Strict Mode)",
+        strictModeSub: "Chỉ trả lời dựa trên tài liệu được cung cấp. Từ chối câu hỏi ngoài phạm vi.",
+        systemRoleTitle: "Vai trò hệ thống (System Role Prompt)",
+        systemRoleSub: "Quy định nhân cách, giọng văn và hành vi của trợ lý.",
+        fallbackTitle: "Câu trả lời khi thiếu dữ liệu (Fallback Response)",
+        fallbackSub: "Thông báo xuất ra khi tài liệu không chứa câu trả lời.",
+        policiesTitle: "Quy tắc nghiệp vụ cốt lõi",
+        policiesSub: "Quy tắc bắt buộc áp dụng cho mọi phản hồi (mỗi dòng 1 quy tắc).",
+        faqTitle: "Cấu hình phản hồi nhanh FAQ (JSON)",
+        faqSub: "Khớp từ khóa để trả lời tức thì không cần qua LLM.",
+        forbiddenTitle: "Từ khóa cấm & Chặn tấn công",
+        forbiddenSub: "Các từ bị cấm, phân tách bởi dấu phẩy.",
+        saveRulesBtn: "Lưu Cấu Hình Doanh Nghiệp",
+        adminUploadTitle: "Nạp Tài Liệu Quy Chuẩn Vào Kho Kiến Thức",
+        adminUploadSub: "Quy định công ty, bảng giá, sổ tay nhân viên (PDF, Word, Excel, CSV, Ảnh OCR, TXT).",
+        adminUploadBtn: "Bắt Đầu Nạp & Sinh Vector",
+        manualSnippetTitle: "Nhập Ghi Chú / Quy Định Thủ Công",
+        manualSnippetSub: "Nhập trực tiếp thông báo hoặc quy định nội bộ mà không cần tải file.",
+        manualTitleLabel: "Tiêu đề:",
+        manualContentLabel: "Nội dung:",
+        manualSaveBtn: "Lưu Ghi Chú Vào CSDL Vector",
+        repoTitle: "Kho Kiến Thức Đã Nạp",
+        repoSub: "Toàn bộ tài liệu đang phục vụ truy vấn RAG.",
+        resetDbBtn: "Xóa Sạch Toàn Bộ CSDL",
+        modelConfigTitle: "Cấu Hình Nơi Lưu Trữ Mô Hình LLM",
+        modelConfigSub: "Đường dẫn thư mục MLX (macOS) hoặc file .gguf (Windows). Hệ thống nạp trực tiếp vào RAM/GPU.",
+        modelPathLabel: "Đường dẫn mô hình (LOCAL_MODEL_PATH):",
+        modelTypeLabel: "Loại kiến trúc (Model Type):",
+        quickPresetsLabel: "Đường dẫn mẫu:",
+        saveModelBtn: "Lưu & Nạp Lại Mô Hình",
+        modelPathValid: "Đã nhận diện (Tệp tồn tại)",
+        modelPathInvalid: "Không tìm thấy đường dẫn trên đĩa",
+        modelSavedSuccess: "Đã lưu đường dẫn & nạp lại mô hình thành công.",
+        modelSavedFailed: "Không thể lưu đường dẫn mô hình.",
+        footerEngine: "TDnook Local In-Process Engine",
+        footerReady: "Sẵn sàng"
+    },
+    en: {
+        brandTag: "Document Intelligence",
+        navUser: "User Reading & Chat",
+        navAdmin: "Admin Business Rules",
+        textureTitle: "Select paper texture",
+        textureKindle: "Kindle Micro-Grain",
+        textureParchment: "Book Parchment",
+        textureLinen: "Woven Linen Paper",
+        textureSmooth: "Smooth Matte",
+        toneSepia: "Sepia Warm Paper",
+        toneEink: "E-Ink Neutral Paper",
+        toneDark: "Dark Ink Mode",
+        fullscreenTitle: "Full Screen Mode",
+        newChat: "New Conversation",
+        chatHistory: "Chat History",
+        chatsCount: (n) => `${n} ${n === 1 ? 'chat' : 'chats'}`,
+        attachedTitle: "Attached File (Session)",
+        attachedBadge: "User Doc",
+        attachedDesc: "Upload PDF, Image (OCR), Word, Excel to chat in this session.",
+        chooseFile: "Choose file to attach",
+        attachBtn: "Attach & Parse File",
+        scopeTitle: "System Knowledge Scope",
+        scopeBadge: (n) => `${n} ${n === 1 ? 'file' : 'files'}`,
+        scopeDesc: "Cross-reference directly with Admin knowledge base",
+        allSystemKnowledge: "All System Knowledge",
+        scopeIndicator: (val) => `Scope: ${val}`,
+        botWelcome: "Hello. Attach a personal document to cross-reference with system knowledge, or ask questions directly. I will provide concise, grounded answers with citations.",
+        quickSummarize: "Summarize Document",
+        quickSkills: "Key Skills & Experience",
+        quickPolicy: "Important Policies",
+        inputPlaceholder: "Ask a question about the document...",
+        sendTitle: "Send Question",
+        userRole: "You",
+        botRole: "TDnook Assistant",
+        sourceLabel: "Sources",
+        pageLabel: "Page",
+        searchingNotice: "Searching document context and applying business rules...",
+        adminTabRules: "1. Business Rules & Guardrails",
+        adminTabIngest: "2. Ingest Policy Documents",
+        adminTabManage: "3. Library Repository",
+        strictModeTitle: "Strict Document-Only Mode",
+        strictModeSub: "AI is strictly restricted to answering within provided documents. Rejects external questions.",
+        systemRoleTitle: "System Persona / Role",
+        systemRoleSub: "Defines the identity and behavior of the assistant.",
+        fallbackTitle: "Fallback Refusal Notice",
+        fallbackSub: "Message shown when the answer is not in the documents.",
+        policiesTitle: "Core Business Policies",
+        policiesSub: "Mandatory rules applied to every response (one rule per line).",
+        faqTitle: "Direct FAQ Rules (JSON)",
+        faqSub: "Keyword matching for instant script response.",
+        forbiddenTitle: "Forbidden Keywords",
+        forbiddenSub: "Banned words separated by commas.",
+        saveRulesBtn: "Save Business Rules",
+        adminUploadTitle: "Upload Standard / Policy Documents",
+        adminUploadSub: "Company guidelines, price lists, employee handbooks (PDF, Word, Excel, CSV, Images OCR, TXT).",
+        adminUploadBtn: "Ingest Selected Files",
+        manualSnippetTitle: "Manual Policy Snippet Entry",
+        manualSnippetSub: "Type internal guidelines or notices directly without creating files.",
+        manualTitleLabel: "Title:",
+        manualContentLabel: "Content:",
+        manualSaveBtn: "Save Manual Policy",
+        repoTitle: "Ingested Knowledge Base",
+        repoSub: "All active documents currently serving RAG queries.",
+        resetDbBtn: "Reset Entire Database",
+        modelConfigTitle: "LLM Model Storage & Path Configuration",
+        modelConfigSub: "Direct file path to MLX directory (macOS) or single .gguf binary (Windows).",
+        modelPathLabel: "Model Path (LOCAL_MODEL_PATH):",
+        modelTypeLabel: "Model Architecture Type:",
+        quickPresetsLabel: "Path presets:",
+        saveModelBtn: "Save & Reload Model",
+        modelPathValid: "Detected (Valid Path)",
+        modelPathInvalid: "Path Not Found on Disk",
+        modelSavedSuccess: "Model path saved & engine reloaded successfully.",
+        modelSavedFailed: "Failed to save model path.",
+        footerEngine: "TDnook Local In-Process Engine",
+        footerReady: "Ready"
+    }
+};
+
+function setLanguage(lang) {
+    currentLang = lang === "en" ? "en" : "vi";
+    localStorage.setItem("tdnook_lang", currentLang);
+
+    // Update active button state
+    const btnEn = document.getElementById("lang-btn-en");
+    const btnVi = document.getElementById("lang-btn-vi");
+    if (btnEn) btnEn.classList.toggle("active", currentLang === "en");
+    if (btnVi) btnVi.classList.toggle("active", currentLang === "vi");
+
+    document.documentElement.lang = currentLang;
+
+    // Apply i18n to all elements with data-i18n
+    const dict = I18N[currentLang];
+    document.querySelectorAll("[data-i18n]").forEach(el => {
+        const key = el.getAttribute("data-i18n");
+        if (dict && dict[key]) {
+            el.textContent = dict[key];
+        }
+    });
+
+    // Update placeholders
+    const qInput = document.getElementById("query-input");
+    if (qInput) {
+        qInput.placeholder = dict.inputPlaceholder;
+    }
+    const textureSel = document.getElementById("texture-selector");
+    if (textureSel) {
+        textureSel.title = dict.textureTitle;
+    }
+    const fsBtn = document.getElementById("btn-fullscreen");
+    if (fsBtn) {
+        fsBtn.title = dict.fullscreenTitle;
+    }
+    const submitBtn = document.getElementById("btn-submit");
+    if (submitBtn) {
+        submitBtn.title = dict.sendTitle;
+    }
+
+    // Refresh dynamic views
+    renderConversationList();
+    onScopeChange();
+
+    if (currentModelSettings) {
+        updateModelStatusBadge(currentModelSettings.exists, currentModelSettings.backend);
+    }
+
+    // If active conversation only has the initial welcome message, translate it
+    const conv = getCurrentConversation();
+    if (conv && conv.messages.length === 1 && conv.messages[0].role === "bot") {
+        conv.messages[0].content = dict.botWelcome;
+        const welcomeEl = document.getElementById("welcome-message-text");
+        if (welcomeEl) welcomeEl.textContent = dict.botWelcome;
+        const roleEl = document.getElementById("welcome-role-badge");
+        if (roleEl) roleEl.textContent = dict.botRole;
+    }
+}
 
 // Multi-Conversation State
 let conversations = [];
 let currentConvId = null;
 
 document.addEventListener("DOMContentLoaded", () => {
-    // Apply saved theme and texture
+    // Apply saved theme, texture, and language
     setPaperTheme(currentTheme);
     setPaperTexture(currentTexture);
+    setLanguage(currentLang);
     
     // Initialize Conversations
     initConversations();
 
-    // Load Admin Data & Documents
+    // Load Admin Data, Documents & Model Settings
     loadDocuments();
     loadAdminRules();
+    loadModelSettings();
 
     // User file input listener
     const fileInput = document.getElementById("user-file-input");
@@ -33,7 +254,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (fileInput.files.length > 0) {
                 chosenLabel.textContent = fileInput.files[0].name;
             } else {
-                chosenLabel.textContent = "Choose file to attach";
+                chosenLabel.textContent = I18N[currentLang].chooseFile;
             }
         });
     }
@@ -59,7 +280,7 @@ function initConversations() {
     }
 
     if (!Array.isArray(conversations) || conversations.length === 0) {
-        const defaultConv = makeNewConversationObject("Cuộc hội thoại mới");
+        const defaultConv = makeNewConversationObject(I18N[currentLang].newChat);
         conversations = [defaultConv];
         currentConvId = defaultConv.id;
     } else {
@@ -76,16 +297,17 @@ function initConversations() {
     renderActiveConversation();
 }
 
-function makeNewConversationObject(title = "Cuộc hội thoại mới") {
+function makeNewConversationObject(title = null) {
+    const defaultTitle = title || I18N[currentLang].newChat;
     return {
         id: "conv_" + Date.now() + "_" + Math.random().toString(36).substr(2, 4),
-        title: title,
+        title: defaultTitle,
         createdAt: new Date().toISOString(),
         userDoc: null, // { filename, text, pages, char_count }
         messages: [
             {
                 role: "bot",
-                content: "Chào bạn. Hãy đính kèm tài liệu cá nhân để đối chiếu với kiến thức hệ thống hoặc đặt câu hỏi trực tiếp. Tôi sẽ trả lời ngắn gọn, chuẩn mực theo đúng ngôn ngữ của bạn.",
+                content: I18N[currentLang].botWelcome,
                 sources: null,
                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             }
@@ -119,7 +341,7 @@ function saveConversations() {
 }
 
 function createNewConversation() {
-    const newConv = makeNewConversationObject("Cuộc hội thoại mới");
+    const newConv = makeNewConversationObject(I18N[currentLang].newChat);
     conversations.unshift(newConv);
     currentConvId = newConv.id;
     saveConversations();
@@ -145,7 +367,7 @@ function deleteConversation(convId, event) {
     
     conversations = conversations.filter(c => c.id !== convId);
     if (conversations.length === 0) {
-        const newConv = makeNewConversationObject("Cuộc hội thoại mới");
+        const newConv = makeNewConversationObject(I18N[currentLang].newChat);
         conversations = [newConv];
         currentConvId = newConv.id;
     } else if (currentConvId === convId) {
@@ -163,7 +385,7 @@ function renderConversationList() {
     if (!listEl) return;
 
     if (countBadge) {
-        countBadge.textContent = `${conversations.length} ${conversations.length === 1 ? 'chat' : 'chats'}`;
+        countBadge.textContent = I18N[currentLang].chatsCount(conversations.length);
     }
 
     listEl.innerHTML = "";
@@ -173,11 +395,12 @@ function renderConversationList() {
         item.onclick = () => switchConversation(conv.id);
 
         const dateStr = new Date(conv.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' });
+        const attachedLabel = currentLang === 'vi' ? 'Đã đính kèm' : 'Attached';
 
         item.innerHTML = `
             <div class="conv-info">
                 <span class="conv-title">${escapeHtml(conv.title)}</span>
-                <span class="conv-time">${dateStr} • ${conv.messages.length} msgs${conv.userDoc ? ' • 📄 Attached' : ''}</span>
+                <span class="conv-time">${dateStr} • ${conv.messages.length} msgs${conv.userDoc ? ` • [${attachedLabel}]` : ''}</span>
             </div>
             <button class="btn-delete-conv" title="Delete conversation" onclick="deleteConversation('${conv.id}', event)">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -209,7 +432,7 @@ function updateAttachedDocUi() {
 
     if (conv.userDoc) {
         if (infoContainer) infoContainer.style.display = "block";
-        if (nameEl) nameEl.textContent = `📄 ${conv.userDoc.filename}`;
+        if (nameEl) nameEl.textContent = conv.userDoc.filename;
     } else {
         if (infoContainer) infoContainer.style.display = "none";
     }
@@ -225,7 +448,10 @@ function removeAttachedUserDoc() {
     updateAttachedDocUi();
     renderConversationList();
 
-    appendMessage("bot", `Đã gỡ tài liệu đính kèm **${removedName}** khỏi cuộc trò chuyện này.`);
+    const notifyMsg = currentLang === 'vi' 
+        ? `Đã gỡ tài liệu đính kèm **${removedName}** khỏi cuộc trò chuyện này.`
+        : `Removed attached document **${removedName}** from this conversation.`;
+    appendMessage("bot", notifyMsg);
     const statusBox = document.getElementById("upload-status");
     if (statusBox) statusBox.style.display = "none";
 }
@@ -248,30 +474,58 @@ function onTextureChange() {
     }
 }
 
-function setPaperTexture(textureClass) {
-    currentTexture = textureClass;
-    localStorage.setItem("docurag_texture", textureClass);
-    updateBodyClasses();
-    
+function setPaperTexture(tex) {
+    currentTexture = tex;
+    localStorage.setItem("docurag_texture", tex);
     const sel = document.getElementById("texture-selector");
-    if (sel) {
-        sel.value = textureClass;
+    if (sel && sel.value !== tex) {
+        sel.value = tex;
     }
+    updateBodyClasses();
 }
 
 function setPaperTheme(themeName) {
     currentTheme = themeName;
     localStorage.setItem("docurag_theme", themeName);
-    updateBodyClasses();
 
-    document.querySelectorAll(".tone-btn").forEach(btn => btn.classList.remove("active"));
-    if (themeName === "theme-sepia") {
-        document.querySelector(".tone-sepia")?.classList.add("active");
-    } else if (themeName === "theme-eink") {
-        document.querySelector(".tone-eink")?.classList.add("active");
-    } else if (themeName === "theme-dark") {
-        document.querySelector(".tone-dark")?.classList.add("active");
+    document.querySelectorAll(".tone-btn").forEach(btn => {
+        btn.classList.remove("active");
+        if (btn.classList.contains(`tone-${themeName.replace("theme-", "")}`)) {
+            btn.classList.add("active");
+        }
+    });
+
+    updateBodyClasses();
+}
+
+function toggleFullScreen() {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+            console.warn(`Error attempting to enable fullscreen: ${err.message}`);
+        });
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        }
     }
+}
+
+function toggleSidebar() {
+    const sidebar = document.getElementById("sidebar-margin");
+    const backdrop = document.getElementById("sidebar-backdrop");
+    if (sidebar) {
+        sidebar.classList.toggle("open");
+    }
+    if (backdrop) {
+        backdrop.classList.toggle("show");
+    }
+}
+
+function closeMobileSidebar() {
+    const sidebar = document.getElementById("sidebar-margin");
+    const backdrop = document.getElementById("sidebar-backdrop");
+    if (sidebar) sidebar.classList.remove("open");
+    if (backdrop) backdrop.classList.remove("show");
 }
 
 function switchPortal(portal) {
@@ -279,51 +533,13 @@ function switchPortal(portal) {
     document.querySelectorAll(".nav-item").forEach(el => el.classList.remove("active"));
     document.querySelectorAll(".portal-view").forEach(el => el.classList.remove("active"));
 
-    if (portal === "user") {
-        document.getElementById("nav-user").classList.add("active");
-        document.getElementById("portal-user").classList.add("active");
-        const qInput = document.getElementById("query-input");
-        if (qInput) qInput.focus();
-    } else {
-        document.getElementById("nav-admin").classList.add("active");
-        document.getElementById("portal-admin").classList.add("active");
-        loadAdminRules();
-        loadDocuments();
-    }
-}
+    const navBtn = document.getElementById(`nav-${portal}`);
+    const viewSection = document.getElementById(`portal-${portal}`);
 
-function toggleSidebar() {
-    const layout = document.querySelector(".workspace-layout");
-    const sidebar = document.getElementById("sidebar-margin");
-    const backdrop = document.getElementById("sidebar-backdrop");
-    
-    if (window.innerWidth <= 768) {
-        if (sidebar) sidebar.classList.toggle("mobile-open");
-        if (backdrop) backdrop.classList.toggle("active");
-    } else {
-        if (layout) layout.classList.toggle("sidebar-collapsed");
-    }
-}
+    if (navBtn) navBtn.classList.add("active");
+    if (viewSection) viewSection.classList.add("active");
 
-function closeMobileSidebar() {
-    if (window.innerWidth <= 768) {
-        const sidebar = document.getElementById("sidebar-margin");
-        const backdrop = document.getElementById("sidebar-backdrop");
-        if (sidebar) sidebar.classList.remove("mobile-open");
-        if (backdrop) backdrop.classList.remove("active");
-    }
-}
-
-function toggleFullScreen() {
-    if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(err => {
-            console.warn(`Error attempting to enable full-screen mode: ${err.message}`);
-        });
-    } else {
-        if (document.exitFullscreen) {
-            document.exitFullscreen();
-        }
-    }
+    closeMobileSidebar();
 }
 
 function switchAdminTab(tabKey) {
@@ -333,6 +549,16 @@ function switchAdminTab(tabKey) {
     const btn = event.currentTarget || event.target;
     btn.classList.add("active");
     document.getElementById(`admintab-${tabKey}`).classList.add("active");
+}
+
+function triggerQuickPrompt(index) {
+    const dict = I18N[currentLang];
+    let promptText = "";
+    if (index === 1) promptText = dict.quickSummarize;
+    else if (index === 2) promptText = dict.quickSkills;
+    else if (index === 3) promptText = dict.quickPolicy;
+
+    sendQuickPrompt(promptText);
 }
 
 function sendQuickPrompt(text) {
@@ -361,7 +587,8 @@ async function loadDocuments() {
             const select = document.getElementById("user-doc-select");
             if (select) {
                 const currentVal = select.value;
-                select.innerHTML = '<option value="All Documents">All System Knowledge</option>';
+                const allLabel = I18N[currentLang].allSystemKnowledge;
+                select.innerHTML = `<option value="All Documents">${allLabel}</option>`;
                 docs.forEach(doc => {
                     const opt = document.createElement("option");
                     opt.value = doc;
@@ -376,7 +603,7 @@ async function loadDocuments() {
             // 2. Update doc count badge
             const badge = document.getElementById("doc-count-badge");
             if (badge) {
-                badge.textContent = `${docs.length} files`;
+                badge.textContent = I18N[currentLang].scopeBadge(docs.length);
             }
 
             // 3. Update admin list table
@@ -389,13 +616,13 @@ async function loadDocuments() {
 }
 
 function renderAdminDocList(docs) {
-    const listEl = document.getElementById("admin-doc-list");
+    const listEl = document.getElementById("documents-list");
     if (!listEl) return;
 
     if (docs.length === 0) {
         listEl.innerHTML = `
             <div class="empty-state">
-                <p>No documents in system knowledge repository yet.</p>
+                <p>${currentLang === 'vi' ? 'Chưa có tài liệu nào trong kho kiến thức hệ thống.' : 'No documents in system knowledge repository yet.'}</p>
             </div>
         `;
         return;
@@ -404,9 +631,9 @@ function renderAdminDocList(docs) {
     let html = `
         <div class="doc-table">
             <div class="table-head">
-                <span>Filename</span>
-                <span>Type</span>
-                <span style="text-align: right;">Action</span>
+                <span>${currentLang === 'vi' ? 'Tên tài liệu' : 'Filename'}</span>
+                <span>${currentLang === 'vi' ? 'Định dạng' : 'Type'}</span>
+                <span style="text-align: right;">${currentLang === 'vi' ? 'Thao tác' : 'Action'}</span>
             </div>
     `;
 
@@ -420,7 +647,7 @@ function renderAdminDocList(docs) {
                 </span>
                 <span class="doc-type">${ext}</span>
                 <span class="doc-action">
-                    <button class="btn-delete" onclick="deleteDocument('${escapeHtml(doc)}')">Delete</button>
+                    <button class="btn-delete" onclick="deleteDocument('${escapeHtml(doc)}')">${currentLang === 'vi' ? 'Xóa' : 'Delete'}</button>
                 </span>
             </div>
         `;
@@ -435,7 +662,8 @@ function onScopeChange() {
     const indicator = document.getElementById("scope-indicator");
     if (select && indicator) {
         const val = select.value;
-        indicator.textContent = `Scope: ${val}`;
+        const displayVal = val === "All Documents" ? I18N[currentLang].allSystemKnowledge : val;
+        indicator.textContent = I18N[currentLang].scopeIndicator(displayVal);
     }
 }
 
@@ -449,7 +677,7 @@ async function handleUserUpload() {
     const btn = document.getElementById("btn-upload-user");
 
     if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
-        showAlert(statusBox, "Please choose a file to attach.", "error");
+        showAlert(statusBox, currentLang === 'vi' ? "Vui lòng chọn một file để đính kèm." : "Please choose a file to attach.", "error");
         return;
     }
 
@@ -458,7 +686,7 @@ async function handleUserUpload() {
     formData.append("file", file);
 
     btn.disabled = true;
-    showAlert(statusBox, `Parsing and reading ${file.name}...`, "info");
+    showAlert(statusBox, currentLang === 'vi' ? `Đang đọc và phân tích ${file.name}...` : `Parsing and reading ${file.name}...`, "info");
 
     try {
         const res = await fetch(`${API_BASE}/documents/parse-user-file`, {
@@ -468,9 +696,9 @@ async function handleUserUpload() {
 
         if (res.ok) {
             const data = await res.json();
-            showAlert(statusBox, `Attached: ${data.filename} (${data.pages} pages)`, "success");
+            showAlert(statusBox, currentLang === 'vi' ? `Đã đính kèm: ${data.filename} (${data.pages} trang)` : `Attached: ${data.filename} (${data.pages} pages)`, "success");
             fileInput.value = "";
-            document.getElementById("user-chosen-file").textContent = "Choose file to attach";
+            document.getElementById("user-chosen-file").textContent = I18N[currentLang].chooseFile;
 
             // Save to current conversation
             const conv = getCurrentConversation();
@@ -484,7 +712,10 @@ async function handleUserUpload() {
             updateAttachedDocUi();
             renderConversationList();
 
-            appendMessage("bot", `Đã đính kèm tài liệu **${data.filename}** (${data.pages} trang / ${data.char_count} ký tự). Tài liệu này được dùng riêng cho cuộc trò chuyện hiện tại và sẽ được đối chiếu với kiến thức hệ thống.`);
+            const attachedBotMsg = currentLang === 'vi'
+                ? `Đã đính kèm tài liệu **${data.filename}** (${data.pages} trang / ${data.char_count} ký tự). Tài liệu này được dùng riêng cho cuộc trò chuyện hiện tại và sẽ được đối chiếu với kiến thức hệ thống.`
+                : `Attached document **${data.filename}** (${data.pages} pages / ${data.char_count} chars). This file is scoped to the current conversation.`;
+            appendMessage("bot", attachedBotMsg);
         } else {
             const err = await res.text();
             showAlert(statusBox, `Attachment failed: ${err}`, "error");
@@ -511,7 +742,7 @@ async function handleSendQuery(e) {
     const filenameFilter = scope === "All Documents" ? null : scope;
 
     // Update conversation title if it's the first question
-    if (conv.title === "Cuộc hội thoại mới" && query.length > 0) {
+    if (conv.title === I18N[currentLang].newChat && query.length > 0) {
         conv.title = query.slice(0, 32) + (query.length > 32 ? "..." : "");
         renderConversationList();
     }
@@ -522,7 +753,7 @@ async function handleSendQuery(e) {
 
     // Append Assistant Loading Turn
     const botMsgId = "msg-" + Date.now();
-    appendMessage("bot", "Searching document context and applying business rules...", null, botMsgId);
+    appendMessage("bot", I18N[currentLang].searchingNotice, null, botMsgId);
 
     const submitBtn = document.getElementById("btn-submit");
     submitBtn.disabled = true;
@@ -674,10 +905,12 @@ function appendMessageToDom(role, content, sources = null, id = null, timestamp 
 
     const time = timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+    const roleLabel = role === "user" ? I18N[currentLang].userRole : I18N[currentLang].botRole;
+
     const header = document.createElement("div");
     header.className = "item-header";
     header.innerHTML = `
-        <span class="role-badge">${role === "user" ? "You" : "Assistant"}</span>
+        <span class="role-badge">${roleLabel}</span>
         <span class="time-stamp">${time}</span>
     `;
 
@@ -695,7 +928,7 @@ function appendMessageToDom(role, content, sources = null, id = null, timestamp 
     if (sources && sources.length > 0) {
         const cite = document.createElement("div");
         cite.className = "citation-box";
-        cite.innerHTML = "<strong>Source:</strong> " + sources.map(s => `${s.filename} (p.${s.page})`).join(", ");
+        cite.innerHTML = `<strong>${I18N[currentLang].sourceLabel}:</strong> ` + sources.map(s => `${s.filename} (${I18N[currentLang].pageLabel} ${s.page})`).join(", ");
         item.appendChild(cite);
     }
 
@@ -717,7 +950,7 @@ function updateBotMessage(id, content, sources = null) {
         if (sources && sources.length > 0) {
             const cite = document.createElement("div");
             cite.className = "citation-box";
-            cite.innerHTML = "<strong>Source:</strong> " + sources.map(s => `${s.filename} (p.${s.page})`).join(", ");
+            cite.innerHTML = `<strong>${I18N[currentLang].sourceLabel}:</strong> ` + sources.map(s => `${s.filename} (${I18N[currentLang].pageLabel} ${s.page})`).join(", ");
             msgEl.appendChild(cite);
         }
     }
@@ -746,7 +979,7 @@ function clearChat() {
     conv.messages = [
         {
             role: "bot",
-            content: "Cuộc trò chuyện đã được làm mới. Hãy đính kèm tài liệu cá nhân để đối chiếu với kiến thức hệ thống hoặc đặt câu hỏi trực tiếp.",
+            content: I18N[currentLang].botWelcome,
             sources: null,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
@@ -781,14 +1014,20 @@ async function loadAdminRules() {
 
 async function saveAdminRules() {
     const statusSpan = document.getElementById("rules-save-status");
+    statusSpan.textContent = currentLang === 'vi' ? "Đang lưu..." : "Saving...";
+    statusSpan.style.color = "var(--text-subtle)";
+
     try {
-        let parsedFaq = [];
-        try {
-            parsedFaq = JSON.parse(document.getElementById("rule-faq").value);
-        } catch (e) {
-            statusSpan.textContent = "Error: Invalid JSON in Direct FAQ.";
-            statusSpan.style.color = "var(--danger-ink)";
-            return;
+        let faqParsed = [];
+        const faqRaw = document.getElementById("rule-faq").value.trim();
+        if (faqRaw) {
+            try {
+                faqParsed = JSON.parse(faqRaw);
+            } catch (err) {
+                statusSpan.textContent = "JSON Error in FAQ field.";
+                statusSpan.style.color = "var(--danger-ink)";
+                return;
+            }
         }
 
         const rules = {
@@ -796,7 +1035,7 @@ async function saveAdminRules() {
             system_role: document.getElementById("rule-system-role").value.trim(),
             no_answer_response: document.getElementById("rule-no-answer").value.trim(),
             business_policies: document.getElementById("rule-policies").value.split("\n").map(s => s.trim()).filter(Boolean),
-            direct_faq: parsedFaq,
+            direct_faq: faqParsed,
             forbidden_keywords: document.getElementById("rule-forbidden").value.split(",").map(s => s.trim()).filter(Boolean)
         };
 
@@ -807,7 +1046,7 @@ async function saveAdminRules() {
         });
 
         if (res.ok) {
-            statusSpan.textContent = "Rules saved successfully.";
+            statusSpan.textContent = currentLang === 'vi' ? "Đã lưu quy định thành công." : "Rules saved successfully.";
             statusSpan.style.color = "var(--accent-ink)";
             setTimeout(() => { statusSpan.textContent = ""; }, 3500);
         } else {
@@ -825,11 +1064,11 @@ async function handleAdminUpload() {
     const statusBox = document.getElementById("admin-upload-status");
 
     if (!fileInput.files || fileInput.files.length === 0) {
-        showAlert(statusBox, "Please select one or more files.", "error");
+        showAlert(statusBox, currentLang === 'vi' ? "Vui lòng chọn ít nhất một file." : "Please select one or more files.", "error");
         return;
     }
 
-    showAlert(statusBox, `Ingesting ${fileInput.files.length} file(s) into system knowledge...`, "info");
+    showAlert(statusBox, currentLang === 'vi' ? `Đang nạp ${fileInput.files.length} file vào kho kiến thức...` : `Ingesting ${fileInput.files.length} file(s) into system knowledge...`, "info");
 
     for (let file of fileInput.files) {
         const fd = new FormData();
@@ -841,7 +1080,7 @@ async function handleAdminUpload() {
         }
     }
 
-    showAlert(statusBox, "Files ingested successfully into system knowledge base.", "success");
+    showAlert(statusBox, currentLang === 'vi' ? "Các file đã được nạp thành công vào hệ thống." : "Files ingested successfully into system knowledge base.", "success");
     fileInput.value = "";
     loadDocuments();
 }
@@ -852,11 +1091,11 @@ async function handleManualIngest() {
     const statusBox = document.getElementById("manual-status");
 
     if (!title || !text) {
-        showAlert(statusBox, "Please provide both title and content.", "error");
+        showAlert(statusBox, currentLang === 'vi' ? "Vui lòng nhập cả tiêu đề và nội dung." : "Please provide both title and content.", "error");
         return;
     }
 
-    showAlert(statusBox, "Embedding and saving manual policy...", "info");
+    showAlert(statusBox, currentLang === 'vi' ? "Đang sinh embedding và lưu quy định..." : "Embedding and saving manual policy...", "info");
 
     try {
         const res = await fetch(`${API_BASE}/documents/raw-text`, {
@@ -866,7 +1105,7 @@ async function handleManualIngest() {
         });
 
         if (res.ok) {
-            showAlert(statusBox, "Manual policy saved to knowledge base.", "success");
+            showAlert(statusBox, currentLang === 'vi' ? "Đã lưu quy định vào kho kiến thức." : "Manual policy saved to knowledge base.", "success");
             document.getElementById("manual-title").value = "";
             document.getElementById("manual-content").value = "";
             loadDocuments();
@@ -880,7 +1119,10 @@ async function handleManualIngest() {
 }
 
 async function deleteDocument(filename) {
-    if (!confirm(`Delete '${filename}' from system knowledge base?`)) return;
+    const confirmMsg = currentLang === 'vi' 
+        ? `Xóa tài liệu '${filename}' khỏi kho kiến thức hệ thống?`
+        : `Delete '${filename}' from system knowledge base?`;
+    if (!confirm(confirmMsg)) return;
     try {
         const res = await fetch(`${API_BASE}/documents/${encodeURIComponent(filename)}`, { method: "DELETE" });
         if (res.ok) {
@@ -892,13 +1134,16 @@ async function deleteDocument(filename) {
 }
 
 async function handleResetDatabase() {
-    if (!confirm("Are you sure you want to delete ALL documents and reset system vector DB?")) return;
+    const confirmMsg = currentLang === 'vi'
+        ? "Bạn có chắc chắn muốn xóa TOÀN BỘ tài liệu và làm mới cơ sở dữ liệu vector?"
+        : "Are you sure you want to delete ALL documents and reset system vector DB?";
+    if (!confirm(confirmMsg)) return;
     try {
         const res = await fetch(`${API_BASE}/documents`, { method: "DELETE" });
         if (res.ok) {
             loadDocuments();
             clearChat();
-            alert("System knowledge database cleared.");
+            alert(currentLang === 'vi' ? "Đã xóa sạch cơ sở dữ liệu kiến thức." : "System knowledge database cleared.");
         }
     } catch (e) {
         alert("Failed to reset: " + e.message);
@@ -920,3 +1165,109 @@ function showAlert(el, msg, type) {
         el.style.color = "var(--text-primary)";
     }
 }
+
+// ==========================================================================
+// LLM Model Storage & Path Management
+// ==========================================================================
+
+let currentModelSettings = null;
+
+async function loadModelSettings() {
+    const badge = document.getElementById("model-status-badge");
+    const pathInput = document.getElementById("setting-model-path");
+    const typeSelect = document.getElementById("setting-model-type");
+    if (!badge || !pathInput) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/settings/model`);
+        if (res.ok) {
+            const data = await res.json();
+            currentModelSettings = data;
+
+            if (!pathInput.dataset.userEdited) {
+                pathInput.value = data.local_model_path || "";
+            }
+            if (typeSelect && data.local_model_type) {
+                typeSelect.value = data.local_model_type;
+            }
+
+            updateModelStatusBadge(data.exists, data.backend);
+        }
+    } catch (e) {
+        console.warn("Failed to load model settings:", e);
+    }
+}
+
+function updateModelStatusBadge(exists, backend) {
+    const badge = document.getElementById("model-status-badge");
+    if (!badge) return;
+    const dict = I18N[currentLang];
+
+    if (exists) {
+        badge.className = "badge badge-valid";
+        const backendText = backend ? ` • ${backend}` : "";
+        badge.textContent = `${dict.modelPathValid}${backendText}`;
+    } else {
+        badge.className = "badge badge-invalid";
+        badge.textContent = dict.modelPathInvalid;
+    }
+}
+
+async function saveModelSettings() {
+    const pathInput = document.getElementById("setting-model-path");
+    const typeSelect = document.getElementById("setting-model-type");
+    const statusSpan = document.getElementById("model-save-status");
+    if (!pathInput || !typeSelect || !statusSpan) return;
+
+    const path = pathInput.value.trim();
+    const type = typeSelect.value;
+    const dict = I18N[currentLang];
+
+    statusSpan.textContent = currentLang === 'vi' ? "Đang kiểm tra & nạp lại mô hình..." : "Checking & reloading model...";
+    statusSpan.style.color = "var(--text-subtle)";
+
+    try {
+        const res = await fetch(`${API_BASE}/settings/model`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                local_model_path: path,
+                local_model_type: type
+            })
+        });
+
+        if (res.ok) {
+            const result = await res.json();
+            currentModelSettings = result;
+            delete pathInput.dataset.userEdited;
+            statusSpan.textContent = dict.modelSavedSuccess;
+            statusSpan.style.color = "var(--accent-ink)";
+            updateModelStatusBadge(result.exists, result.backend);
+            setTimeout(() => { statusSpan.textContent = ""; }, 4000);
+        } else {
+            const err = await res.text();
+            statusSpan.textContent = `${dict.modelSavedFailed}: ${err}`;
+            statusSpan.style.color = "var(--danger-ink)";
+        }
+    } catch (e) {
+        statusSpan.textContent = `${dict.modelSavedFailed}: ${e.message}`;
+        statusSpan.style.color = "var(--danger-ink)";
+    }
+}
+
+function fillPresetPath(preset) {
+    const pathInput = document.getElementById("setting-model-path");
+    const typeSelect = document.getElementById("setting-model-type");
+    if (!pathInput) return;
+
+    if (preset === 'mac-mlx') {
+        pathInput.value = "/Users/daotan/.lmstudio/models/lmstudio-community/Qwen3.5-2B-MLX-4bit";
+        if (typeSelect) typeSelect.value = "qwen";
+    } else if (preset === 'win-gguf') {
+        pathInput.value = "C:\\Users\\User\\.lmstudio\\models\\qwen2.5-3b-instruct-q4_k_m.gguf";
+        if (typeSelect) typeSelect.value = "qwen";
+    }
+    pathInput.dataset.userEdited = "true";
+    pathInput.focus();
+}
+

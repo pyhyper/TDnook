@@ -1,6 +1,8 @@
 /* ==========================================================================
    TDnook — Full-Screen Responsive Kindle & Realistic Paper Design System
-   ========================================================================== */
+html {
+    scrollbar-gutter: stable;
+}
 
 :root {
     --font-serif: 'Literata', 'Newsreader', Georgia, serif;
@@ -195,6 +197,8 @@ html, body {
     letter-spacing: 0.05em;
     font-weight: 500;
     white-space: nowrap;
+    display: inline-block;
+    min-width: 165px;
 }
 
 /* Portal Navigation Tabs */
@@ -211,7 +215,11 @@ html, body {
     font-family: var(--font-sans);
     font-size: 0.82rem;
     font-weight: 500;
-    padding: 6px 12px;
+    padding: 6px 14px;
+    width: 195px;
+    min-width: 195px;
+    max-width: 195px;
+    text-align: center;
     border: none;
     background: transparent;
     color: var(--text-secondary);
@@ -219,6 +227,11 @@ html, body {
     border-radius: 4px;
     transition: all 0.15s ease;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .nav-item:hover {
@@ -239,11 +252,50 @@ html, body {
     gap: 8px;
 }
 
+/* Minimalist Language Switcher */
+.lang-switcher {
+    display: inline-flex;
+    align-items: center;
+    background-color: var(--bg-sidebar);
+    border: 1px solid var(--border-medium);
+    border-radius: 4px;
+    padding: 2px;
+    gap: 2px;
+}
+
+.lang-btn {
+    font-family: var(--font-sans);
+    font-size: 0.74rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    padding: 3px 8px;
+    border: none;
+    background: transparent;
+    color: var(--text-subtle);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    line-height: 1.2;
+}
+
+.lang-btn:hover {
+    color: var(--text-primary);
+}
+
+.lang-btn.active {
+    background-color: var(--bg-surface);
+    color: var(--text-primary);
+    font-weight: 700;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+
 .texture-select {
     font-family: var(--font-sans);
     font-size: 0.78rem;
     font-weight: 500;
     padding: 5px 8px;
+    width: 200px;
     background-color: var(--bg-sidebar);
     border: 1px solid var(--border-medium);
     color: var(--text-primary);
@@ -532,6 +584,7 @@ html, body {
     color: var(--text-secondary);
     margin-bottom: 10px;
     line-height: 1.4;
+    min-height: 42px;
 }
 
 /* Dropzone */
@@ -877,7 +930,11 @@ html, body {
     font-family: var(--font-sans);
     font-size: 0.76rem;
     font-weight: 500;
-    padding: 4px 10px;
+    padding: 4px 12px;
+    min-width: 140px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     background-color: var(--bg-sidebar);
     border: 1px solid var(--border-light);
     border-radius: 14px;
@@ -933,7 +990,8 @@ html, body {
 .admin-workspace {
     flex: 1 1 0;
     min-height: 0;
-    overflow-y: auto;
+    overflow-y: scroll;
+    scrollbar-gutter: stable;
     padding: 24px 20px;
     max-width: 960px;
     margin: 0 auto;
@@ -954,7 +1012,10 @@ html, body {
     font-family: var(--font-sans);
     font-size: 0.85rem;
     font-weight: 500;
-    padding: 7px 12px;
+    padding: 7px 14px;
+    flex: 1 1 0;
+    min-width: 220px;
+    text-align: center;
     background: none;
     border: none;
     color: var(--text-secondary);
@@ -981,6 +1042,7 @@ html, body {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 16px;
+    align-items: stretch;
 }
 
 .full-width {
@@ -991,6 +1053,7 @@ html, body {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 16px;
+    align-items: stretch;
 }
 
 .admin-card {
@@ -999,6 +1062,8 @@ html, body {
     padding: 18px;
     border-radius: 6px;
     box-shadow: var(--shadow-soft);
+    display: flex;
+    flex-direction: column;
 }
 
 .card-heading {
@@ -1007,13 +1072,121 @@ html, body {
     font-weight: 700;
     color: var(--text-primary);
     margin-bottom: 4px;
+    min-height: 42px;
+    display: flex;
+    align-items: center;
+    line-height: 1.35;
 }
 
 .card-subtext {
     font-family: var(--font-sans);
     font-size: 0.76rem;
     color: var(--text-secondary);
-    margin-bottom: 10px;
+    margin-bottom: 12px;
+    min-height: 44px;
+    line-height: 1.4;
+    display: flex;
+    align-items: flex-start;
+}
+
+.switch-row .card-heading,
+.model-config-card .card-heading {
+    min-height: 26px;
+    margin-bottom: 2px;
+}
+
+.switch-row .card-subtext,
+.model-config-card .card-subtext {
+    min-height: 34px;
+    margin-bottom: 0;
+}
+
+/* Model Storage & Path Config Styles */
+.card-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.model-config-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.form-row {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+}
+
+.form-row .flex-grow {
+    flex: 1;
+}
+
+.form-row .width-220 {
+    width: 220px;
+    flex-shrink: 0;
+}
+
+.form-label {
+    display: block;
+    font-family: var(--font-sans);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+}
+
+.model-quick-presets {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 0.75rem;
+}
+
+.preset-label {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.btn-preset {
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    padding: 3px 8px;
+    background-color: var(--bg-sidebar);
+    border: 1px dashed var(--border-medium);
+    border-radius: 4px;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-preset:hover {
+    border-color: var(--accent-ink);
+    background-color: var(--bg-surface);
+}
+
+.model-action-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 4px;
+}
+
+.badge-valid {
+    background-color: rgba(44, 74, 62, 0.15) !important;
+    color: var(--accent-ink) !important;
+    border: 1px solid var(--accent-ink) !important;
+}
+
+.badge-invalid {
+    background-color: rgba(138, 45, 45, 0.15) !important;
+    color: var(--danger-ink) !important;
+    border: 1px solid var(--danger-ink) !important;
 }
 
 .switch-row {
@@ -1088,6 +1261,16 @@ input:checked + .toggle-slider:before {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 16px;
+}
+
+.repository-top .card-heading {
+    min-height: 26px;
+    margin-bottom: 2px;
+}
+
+.repository-top .card-subtext {
+    min-height: 20px;
+    margin-bottom: 0;
 }
 
 .repo-list {

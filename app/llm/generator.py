@@ -7,6 +7,15 @@ logger = logging.getLogger(__name__)
 _llm = None
 _backend = None
 
+def reset_llm():
+    global _llm, _backend
+    _llm = None
+    _backend = None
+    logger.info("Local LLM model cache has been reset.")
+
+def get_backend():
+    return _backend
+
 def get_llm():
     global _llm, _backend
     if _llm is not None:

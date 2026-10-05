@@ -6,6 +6,7 @@ from app.models.schemas import QueryRequest, QueryResponse, UploadResponse, Sour
 from app.rag.pipeline import ingest_document, ingest_raw_text, query_pipeline
 from app.rag.vector_store import reset_db, delete_document, list_documents
 from app.rules.manager import get_business_rules, save_business_rules
+from app.llm.generator import reset_llm, get_backend
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,100 @@ SUPPORTED_EXTENSIONS = {
     ".pdf", ".png", ".jpg", ".jpeg", ".bmp", ".webp",
     ".csv", ".xlsx", ".xls", ".docx", ".doc", ".txt", ".md"
 }
+
+# --- MODEL & STORAGE CONFIGURATION ENDPOINTS ---
+@router.get("/settings/model")
+def get_model_settings():
+    """
+    Get current LLM model storage path and runtime status.
+    """
+    path = os.getenv("LOCAL_MODEL_PATH", "")
+    model_type = os.getenv("LOCAL_MODEL_TYPE", "qwen")
+    exists = os.path.exists(path) if path else False
+    is_dir = os.path.isdir(path) if exists else False
+    
+    target_backend = "Unknown"
+    if exists:
+        if is_dir or "mlx" in path.lower():
+            target_backend = "mlx_lm (Apple Silicon Metal)"
+        elif path.endswith(".gguf") or "gguf" in path.lower():
+            target_backend = "llama_cpp (GGUF Binary)"
+        else:
+            target_backend = "ctransformers / generic"
+            
+    return {
+        "local_model_path": path,
+        "local_model_type": model_type,
+        "exists": exists,
+        "is_directory": is_dir,
+        "backend": get_backend() or target_backend,
+        "target_engine": target_backend,
+        "model_n_ctx": int(os.getenv("MODEL_N_CTX", 8192)),
+        "model_temperature": float(os.getenv("MODEL_TEMPERATURE", 0.3))
+    }
+
+@router.post("/settings/model")
+def update_model_settings(payload: dict = Body(...)):
+    """
+    Update LOCAL_MODEL_PATH and LOCAL_MODEL_TYPE in environment and .env file.
+    """
+    new_path = payload.get("local_model_path", "").strip()
+    new_type = payload.get("local_model_type", "qwen").strip().lower()
+    
+    if not new_path:
+        raise HTTPException(status_code=400, detail="Model path cannot be empty.")
+        
+    exists = os.path.exists(new_path)
+    
+    # Update current process environment
+    os.environ["LOCAL_MODEL_PATH"] = new_path
+    os.environ["LOCAL_MODEL_TYPE"] = new_type
+    
+    # Update .env file if it exists
+    env_file = os.path.join(os.getcwd(), ".env")
+    try:
+        lines = []
+        if os.path.exists(env_file):
+            with open(env_file, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+        
+        path_updated = False
+        type_updated = False
+        new_lines = []
+        for line in lines:
+            if line.strip().startswith("LOCAL_MODEL_PATH="):
+                new_lines.append(f"LOCAL_MODEL_PATH={new_path}\n")
+                path_updated = True
+            elif line.strip().startswith("LOCAL_MODEL_TYPE="):
+                new_lines.append(f"LOCAL_MODEL_TYPE={new_type}\n")
+                type_updated = True
+            else:
+                new_lines.append(line)
+                
+        if not path_updated:
+            new_lines.append(f"LOCAL_MODEL_PATH={new_path}\n")
+        if not type_updated:
+            new_lines.append(f"LOCAL_MODEL_TYPE={new_type}\n")
+            
+        with open(env_file, "w", encoding="utf-8") as f:
+            f.writelines(new_lines)
+    except Exception as e:
+        logger.warning(f"Could not update .env file: {e}")
+        
+    # Reset LLM in-memory cache so next generation will reload
+    reset_llm()
+    
+    target_backend = "mlx_lm (Apple Silicon Metal)" if (os.path.isdir(new_path) or "mlx" in new_path.lower()) else "llama_cpp (GGUF)"
+    
+    return {
+        "status": "success",
+        "message": "Model path updated successfully. LLM cache reset.",
+        "local_model_path": new_path,
+        "local_model_type": new_type,
+        "exists": exists,
+        "backend": target_backend,
+        "target_engine": target_backend
+    }
 
 # --- BUSINESS RULES ENDPOINTS ---
 @router.get("/rules")
@@ -37,6 +132,7 @@ def update_rules(rules: dict = Body(...)):
     if not success:
         raise HTTPException(status_code=500, detail="Failed to save business rules.")
     return {"status": "success", "message": "Business rules updated successfully."}
+
 
 # --- DOCUMENT MANAGEMENT ENDPOINTS ---
 @router.get("/documents")
