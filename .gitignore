@@ -46,14 +46,31 @@ TDSpeLi/
 *.safetensors
 *.ckpt
 
-# Local Database & Storage
+# Local Database & User Documents
 data/vector_db/
 data/chroma_db/
 data/easyocr_models/
-data/documents/
+data/documents/*
+!data/documents/.gitkeep
+!data/documents/sample_document.txt
 data/uploaded_docs/
+data/temp_user_uploads/
+.cv_backup/
+
+# Sensitive & Personal Documents (CV, Resumes, etc.)
+*CV*
+*cv*
+*Resume*
+*resume*
+data/documents/*.pdf
+data/documents/*.docx
+data/documents/*.xlsx
+data/documents/*.png
+data/documents/*.jpg
+data/documents/*.jpeg
 *.sqlite3
 *.db
+
 
 # Logs & Temporary Files
 *.log
