@@ -409,3 +409,25 @@ Truy cập trình duyệt: **[http://localhost:8501](http://localhost:8501)**
 ## 7. Bản Quyền (License)
 
 Dự án được phân phối dưới giấy phép **MIT License** — xem chi tiết tại file [LICENSE](LICENSE).
+
+### Configure the local model in the web UI
+
+Open **Admin Business Rules → Business Rules & Guardrails**. The first card,
+**LLM Model Storage & Path Configuration**, accepts the path to an existing `.gguf`
+file or an MLX folder containing `config.json` and `.safetensors` weights. Paths
+refer to the machine running TDnook, not the browser's device. `~` is expanded to
+the server user's home directory. Presets are examples; adjust them to your files.
+
+Choose the model architecture and click **Save Model Settings**. TDnook validates
+the location and persists it to `.env`; failed validation or writes leave the
+active settings unchanged. The cached model is cleared after saving and the new
+model loads on the next query that requires inference. A detected path does not
+guarantee model compatibility with the installed inference engine.
+
+Use **Browse…** next to the model path to open a local picker. It starts at the
+current model location and offers Home, LM Studio, Hugging Face, and project
+model folders when present. Select a GGUF file directly, or enter an MLX folder
+and choose **Select this folder**. Selection fills the absolute path; it does
+not upload weights or save settings until you click **Save Model Settings**.
+The picker is available when accessing TDnook locally; remote clients can still
+enter the server's model path manually.

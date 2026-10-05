@@ -1,6 +1,7 @@
 import os
 import logging
 import re
+from app.llm.settings import normalize_model_path, DEFAULT_MODEL_PATH, DEFAULT_MODEL_TYPE
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,7 @@ def get_llm():
     if _llm is not None:
         return _llm
 
-    model_path = os.getenv("LOCAL_MODEL_PATH", "./gemma-4-E4B-it-Q4_K_M.gguf")
+    model_path = normalize_model_path(os.getenv("LOCAL_MODEL_PATH", DEFAULT_MODEL_PATH))
     
     if not os.path.exists(model_path):
         raise FileNotFoundError(
@@ -37,7 +38,7 @@ def get_llm():
     logger.info(f"Loading local LLM: {model_path}")
 
     # 1. Try MLX-LM engine (Optimized for Apple Silicon macOS)
-    if os.path.isdir(model_path) or "mlx" in model_path.lower():
+    if os.path.isdir(model_path):
         try:
             import mlx_lm
             logger.info("Initializing model via mlx-lm engine (Apple Silicon Metal)...")
@@ -70,7 +71,7 @@ def get_llm():
     # 3. Try ctransformers fallback
     try:
         from ctransformers import AutoModelForCausalLM
-        configured = os.getenv("LOCAL_MODEL_TYPE", "gemma").strip()
+        configured = os.getenv("LOCAL_MODEL_TYPE", DEFAULT_MODEL_TYPE).strip()
         candidates = [configured, "llama", "gemma", "mistral", "qwen"]
         for model_type in candidates:
             try:

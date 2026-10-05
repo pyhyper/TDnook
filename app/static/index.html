@@ -10,7 +10,7 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,300;0,7..72,400;0,7..72,500;0,7..72,600;1,7..72,400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css?v=20261005_01">
+    <link rel="stylesheet" href="/static/style.css?v=20261005_04">
 </head>
 
 <body class="theme-sepia">
@@ -224,7 +224,10 @@
                                     <div class="form-row">
                                         <div class="form-field flex-grow">
                                             <label for="setting-model-path" class="form-label" data-i18n="modelPathLabel">Đường dẫn mô hình (LOCAL_MODEL_PATH):</label>
+                                            <div class="model-path-control">
                                             <input type="text" id="setting-model-path" class="text-input" style="font-family: var(--font-mono); font-size: 0.8rem;" placeholder="/Users/.../model or C:\models\model.gguf">
+                                                <button type="button" class="btn" onclick="openModelBrowser()" data-i18n="browseModel">Chọn…</button>
+                                            </div>
                                         </div>
                                         <div class="form-field width-220">
                                             <label for="setting-model-type" class="form-label" data-i18n="modelTypeLabel">Loại kiến trúc (Model Type):</label>
@@ -242,8 +245,8 @@
                                         <button type="button" class="btn-preset" onclick="fillPresetPath('win-gguf')">Windows (GGUF File)</button>
                                     </div>
                                     <div class="model-action-row">
-                                        <button type="button" class="btn btn-primary" onclick="saveModelSettings()" data-i18n="saveModelBtn">Lưu & Nạp Lại Mô Hình</button>
-                                        <span id="model-save-status" class="status-indicator"></span>
+                                        <button type="button" class="btn btn-primary" id="save-model-button" onclick="saveModelSettings()" data-i18n="saveModelBtn">Lưu Cấu Hình Mô Hình</button>
+                                        <span role="status" aria-live="polite" id="model-save-status" class="status-indicator"></span>
                                     </div>
                                 </div>
                             </div>
@@ -359,7 +362,33 @@
         </footer>
     </div>
 
-    <script src="/static/app.js?v=20261005_02"></script>
+    <dialog id="model-browser" aria-labelledby="model-browser-title">
+        <div class="model-browser-header">
+            <h3 id="model-browser-title" data-i18n="browseModelTitle">Chọn mô hình trên máy chạy TDnook</h3>
+            <button type="button" class="btn" onclick="closeModelBrowser()" data-i18n="closeBrowser">Đóng</button>
+        </div>
+        <p class="card-subtext" data-i18n="browseModelHelp">Chọn file GGUF hoặc mở thư mục MLX rồi bấm Chọn thư mục này. File không được tải lên.</p>
+        <div id="model-browser-shortcuts" class="model-browser-shortcuts"></div>
+        <form id="model-browser-form" onsubmit="event.preventDefault(); browseModelFolder(document.getElementById('model-browser-path').value)">
+            <label for="model-browser-path" data-i18n="browseFolderPath">Đường dẫn thư mục</label>
+            <div class="model-path-control">
+                <input id="model-browser-path" class="text-input" type="text" autocomplete="off" spellcheck="false">
+                <button type="submit" class="btn" data-i18n="openFolder">Mở</button>
+                <button id="model-browser-up" type="button" class="btn" onclick="browseModelFolder(modelBrowserData.parent)" data-i18n="parentFolder">Lên một cấp</button>
+            </div>
+        </form>
+        <nav id="model-browser-breadcrumbs" aria-label="Folder path"></nav>
+        <div class="model-current-selection">
+            <p id="model-browser-status" role="status" aria-live="polite"></p>
+            <button id="model-browser-select" type="button" class="btn btn-primary" onclick="selectModelPath(modelBrowserData.selection_path)" data-i18n="chooseEntry" disabled>Chọn</button>
+        </div>
+        <div id="model-browser-list" class="model-browser-list" aria-busy="false"></div>
+        <div class="model-browser-actions">
+            <button id="model-browser-more" type="button" class="btn" onclick="browseModelFolder(modelBrowserData.path, modelBrowserData.next_offset)" data-i18n="moreFiles" hidden>Xem thêm</button>
+        </div>
+    </dialog>
+
+    <script src="/static/app.js?v=20261005_04"></script>
 </body>
 
 </html>

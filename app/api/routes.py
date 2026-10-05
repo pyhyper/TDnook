@@ -1,12 +1,14 @@
 import os
 import shutil
 import logging
-from fastapi import APIRouter, UploadFile, File, HTTPException, Body
+import ipaddress
+from fastapi import APIRouter, UploadFile, File, HTTPException, Body, Request, Query
 from app.models.schemas import QueryRequest, QueryResponse, UploadResponse, Source
 from app.rag.pipeline import ingest_document, ingest_raw_text, query_pipeline
 from app.rag.vector_store import reset_db, delete_document, list_documents
 from app.rules.manager import get_business_rules, save_business_rules
 from app.llm.generator import reset_llm, get_backend
+from app.llm.settings import save_model_settings, normalize_model_path, DEFAULT_MODEL_PATH, DEFAULT_MODEL_TYPE
 
 logger = logging.getLogger(__name__)
 
@@ -22,19 +24,37 @@ SUPPORTED_EXTENSIONS = {
 }
 
 # --- MODEL & STORAGE CONFIGURATION ENDPOINTS ---
+@router.get("/settings/model/browse")
+def browse_model_files(request: Request, path: str | None = None, offset: int = Query(0, ge=0)):
+    # This unauthenticated local app must not expose its filesystem to remote clients.
+    try:
+        local = request.client is not None and ipaddress.ip_address(request.client.host).is_loopback
+    except ValueError:
+        local = False
+    if not local:
+        raise HTTPException(status_code=403, detail="The model picker is available on the TDnook host only.")
+    from app.llm.browser import browse_models
+    try:
+        return browse_models(path, offset)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except OSError as exc:
+        raise HTTPException(status_code=403, detail="Cannot read this folder. Check folder permissions.") from exc
+
+
 @router.get("/settings/model")
 def get_model_settings():
     """
     Get current LLM model storage path and runtime status.
     """
-    path = os.getenv("LOCAL_MODEL_PATH", "")
-    model_type = os.getenv("LOCAL_MODEL_TYPE", "qwen")
+    path = normalize_model_path(os.getenv("LOCAL_MODEL_PATH", DEFAULT_MODEL_PATH))
+    model_type = os.getenv("LOCAL_MODEL_TYPE", DEFAULT_MODEL_TYPE)
     exists = os.path.exists(path) if path else False
     is_dir = os.path.isdir(path) if exists else False
     
     target_backend = "Unknown"
     if exists:
-        if is_dir or "mlx" in path.lower():
+        if is_dir:
             target_backend = "mlx_lm (Apple Silicon Metal)"
         elif path.endswith(".gguf") or "gguf" in path.lower():
             target_backend = "llama_cpp (GGUF Binary)"
@@ -57,63 +77,16 @@ def update_model_settings(payload: dict = Body(...)):
     """
     Update LOCAL_MODEL_PATH and LOCAL_MODEL_TYPE in environment and .env file.
     """
-    new_path = payload.get("local_model_path", "").strip()
-    new_type = payload.get("local_model_type", "qwen").strip().lower()
-    
-    if not new_path:
-        raise HTTPException(status_code=400, detail="Model path cannot be empty.")
-        
-    exists = os.path.exists(new_path)
-    
-    # Update current process environment
-    os.environ["LOCAL_MODEL_PATH"] = new_path
-    os.environ["LOCAL_MODEL_TYPE"] = new_type
-    
-    # Update .env file if it exists
-    env_file = os.path.join(os.getcwd(), ".env")
     try:
-        lines = []
-        if os.path.exists(env_file):
-            with open(env_file, "r", encoding="utf-8") as f:
-                lines = f.readlines()
-        
-        path_updated = False
-        type_updated = False
-        new_lines = []
-        for line in lines:
-            if line.strip().startswith("LOCAL_MODEL_PATH="):
-                new_lines.append(f"LOCAL_MODEL_PATH={new_path}\n")
-                path_updated = True
-            elif line.strip().startswith("LOCAL_MODEL_TYPE="):
-                new_lines.append(f"LOCAL_MODEL_TYPE={new_type}\n")
-                type_updated = True
-            else:
-                new_lines.append(line)
-                
-        if not path_updated:
-            new_lines.append(f"LOCAL_MODEL_PATH={new_path}\n")
-        if not type_updated:
-            new_lines.append(f"LOCAL_MODEL_TYPE={new_type}\n")
-            
-        with open(env_file, "w", encoding="utf-8") as f:
-            f.writelines(new_lines)
-    except Exception as e:
-        logger.warning(f"Could not update .env file: {e}")
-        
-    # Reset LLM in-memory cache so next generation will reload
+        save_model_settings(payload.get("local_model_path"), payload.get("local_model_type"))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except OSError as exc:
+        logger.error("Could not persist model settings: %s", exc)
+        raise HTTPException(status_code=500, detail="Could not save model settings to .env.") from exc
     reset_llm()
-    
-    target_backend = "mlx_lm (Apple Silicon Metal)" if (os.path.isdir(new_path) or "mlx" in new_path.lower()) else "llama_cpp (GGUF)"
-    
-    return {
-        "status": "success",
-        "message": "Model path updated successfully. LLM cache reset.",
-        "local_model_path": new_path,
-        "local_model_type": new_type,
-        "exists": exists,
-        "backend": target_backend,
-        "target_engine": target_backend
-    }
+    return {"status": "success", **get_model_settings()}
+
 
 # --- BUSINESS RULES ENDPOINTS ---
 @router.get("/rules")

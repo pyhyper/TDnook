@@ -15,6 +15,25 @@ let currentLang = localStorage.getItem("tdnook_lang") || "vi";
 // ==========================================================================
 const I18N = {
     vi: {
+        chooseEntry: "Chọn",
+        browserGgufHint: "Đã tìm thấy file GGUF. Bấm Chọn để dùng model này.",
+        modelPending: "Chưa lưu thay đổi",
+        browseModel: "Chọn…",
+        browseModelTitle: "Chọn mô hình trên máy chạy TDnook",
+        closeBrowser: "Đóng",
+        browseModelHelp: "Bấm tên thư mục để mở, hoặc Chọn để dùng model bên trong. Nếu có nhiều file GGUF, hãy chọn đúng file cần dùng.",
+        browseFolderPath: "Đường dẫn thư mục",
+        openFolder: "Mở",
+        parentFolder: "Lên một cấp",
+        moreFiles: "Xem thêm",
+        selectModelFolder: "Chọn thư mục này",
+        browserLoading: "Đang đọc thư mục…",
+        browserEmpty: "Không có thư mục con hoặc file GGUF.",
+        browserFailed: "Không thể mở thư mục.",
+        browserFolderHint: "Mở thư mục con để tìm model, hoặc chọn một file GGUF.",
+        browserMlxHint: "Đã tìm thấy cấu hình và trọng số MLX. Có thể chọn thư mục này.",
+        browserHome: "Thư mục người dùng",
+        modelSelected: "Đã chọn đường dẫn. Bấm Lưu Cấu Hình Mô Hình để áp dụng.",
         brandTag: "Trí Tuệ Tài Liệu",
         navUser: "Đọc Sách & Trò Chuyện",
         navAdmin: "Quy Định Doanh Nghiệp",
@@ -83,15 +102,36 @@ const I18N = {
         modelPathLabel: "Đường dẫn mô hình (LOCAL_MODEL_PATH):",
         modelTypeLabel: "Loại kiến trúc (Model Type):",
         quickPresetsLabel: "Đường dẫn mẫu:",
-        saveModelBtn: "Lưu & Nạp Lại Mô Hình",
+        saveModelBtn: "Lưu Cấu Hình Mô Hình",
+        modelChecking: "Đang kiểm tra...",
+        modelLoadFailed: "Không thể đọc cấu hình mô hình",
         modelPathValid: "Đã nhận diện (Tệp tồn tại)",
         modelPathInvalid: "Không tìm thấy đường dẫn trên đĩa",
-        modelSavedSuccess: "Đã lưu đường dẫn & nạp lại mô hình thành công.",
+        modelSavedSuccess: "Đã lưu. Mô hình sẽ được nạp ở truy vấn tiếp theo.",
         modelSavedFailed: "Không thể lưu đường dẫn mô hình.",
         footerEngine: "TDnook Local In-Process Engine",
         footerReady: "Sẵn sàng"
     },
     en: {
+        chooseEntry: "Select",
+        browserGgufHint: "GGUF model found. Click Select to use this model.",
+        modelPending: "Unsaved changes",
+        browseModel: "Browse…",
+        browseModelTitle: "Choose a model on the TDnook host",
+        closeBrowser: "Close",
+        browseModelHelp: "Click a folder name to open it, or Select to use its model. If a folder contains multiple GGUF files, choose the file you need.",
+        browseFolderPath: "Folder path",
+        openFolder: "Open",
+        parentFolder: "Up one level",
+        moreFiles: "Show more",
+        selectModelFolder: "Select this folder",
+        browserLoading: "Reading folder…",
+        browserEmpty: "No subfolders or GGUF files.",
+        browserFailed: "Could not open folder.",
+        browserFolderHint: "Open a subfolder to find a model, or choose a GGUF file.",
+        browserMlxHint: "MLX configuration and weights found. You can select this folder.",
+        browserHome: "Home folder",
+        modelSelected: "Path selected. Click Save Model Settings to apply.",
         brandTag: "Document Intelligence",
         navUser: "User Reading & Chat",
         navAdmin: "Admin Business Rules",
@@ -160,15 +200,31 @@ const I18N = {
         modelPathLabel: "Model Path (LOCAL_MODEL_PATH):",
         modelTypeLabel: "Model Architecture Type:",
         quickPresetsLabel: "Path presets:",
-        saveModelBtn: "Save & Reload Model",
+        saveModelBtn: "Save Model Settings",
+        modelChecking: "Checking...",
+        modelLoadFailed: "Could not read model settings",
         modelPathValid: "Detected (Valid Path)",
         modelPathInvalid: "Path Not Found on Disk",
-        modelSavedSuccess: "Model path saved & engine reloaded successfully.",
+        modelSavedSuccess: "Saved. The model will load on the next query.",
         modelSavedFailed: "Failed to save model path.",
         footerEngine: "TDnook Local In-Process Engine",
         footerReady: "Ready"
     }
 };
+
+function renderStableTranslation(el, key, suffix = "") {
+    el.classList.add("i18n-stable");
+    const visible = document.createElement("span");
+    visible.textContent = I18N[currentLang][key] + suffix;
+    const reserves = ["vi", "en"].map(language => {
+        const span = document.createElement("span");
+        span.className = "i18n-reserve";
+        span.setAttribute("aria-hidden", "true");
+        span.textContent = I18N[language][key] + suffix;
+        return span;
+    });
+    el.replaceChildren(visible, ...reserves);
+}
 
 function setLanguage(lang) {
     currentLang = lang === "en" ? "en" : "vi";
@@ -187,7 +243,13 @@ function setLanguage(lang) {
     document.querySelectorAll("[data-i18n]").forEach(el => {
         const key = el.getAttribute("data-i18n");
         if (dict && dict[key]) {
-            el.textContent = dict[key];
+            if (el.tagName === "OPTION" || el.id === "user-chosen-file") {
+                if (el.id !== "user-chosen-file" || !document.getElementById("user-file-input")?.files.length) {
+                    el.textContent = dict[key];
+                }
+            } else {
+                renderStableTranslation(el, key);
+            }
         }
     });
 
@@ -213,8 +275,12 @@ function setLanguage(lang) {
     renderConversationList();
     onScopeChange();
 
-    if (currentModelSettings) {
+    if (document.getElementById("setting-model-path")?.dataset.userEdited || document.getElementById("setting-model-type")?.dataset.userEdited) {
+        markModelSettingsPending();
+    } else if (currentModelSettings) {
         updateModelStatusBadge(currentModelSettings.exists, currentModelSettings.backend);
+    } else {
+        renderStableTranslation(document.getElementById("model-status-badge"), modelSettingsLoadFailed ? "modelLoadFailed" : "modelChecking");
     }
 
     // If active conversation only has the initial welcome message, translate it
@@ -245,6 +311,13 @@ document.addEventListener("DOMContentLoaded", () => {
     loadDocuments();
     loadAdminRules();
     loadModelSettings();
+
+    ["setting-model-path", "setting-model-type"].forEach(id => {
+        document.getElementById(id)?.addEventListener("input", event => {
+            event.target.dataset.userEdited = "true";
+            markModelSettingsPending();
+        });
+    });
 
     // User file input listener
     const fileInput = document.getElementById("user-file-input");
@@ -546,7 +619,7 @@ function switchAdminTab(tabKey) {
     document.querySelectorAll(".subnav-item").forEach(b => b.classList.remove("active"));
     document.querySelectorAll(".subtab-pane").forEach(p => p.classList.remove("active"));
 
-    const btn = event.currentTarget || event.target;
+    const btn = document.querySelector(`[onclick="switchAdminTab('${tabKey}')"]`);
     btn.classList.add("active");
     document.getElementById(`admintab-${tabKey}`).classList.add("active");
 }
@@ -1171,6 +1244,7 @@ function showAlert(el, msg, type) {
 // ==========================================================================
 
 let currentModelSettings = null;
+let modelSettingsLoadFailed = false;
 
 async function loadModelSettings() {
     const badge = document.getElementById("model-status-badge");
@@ -1180,21 +1254,25 @@ async function loadModelSettings() {
 
     try {
         const res = await fetch(`${API_BASE}/settings/model`);
+        if (!res.ok) throw new Error("Could not read model settings");
         if (res.ok) {
             const data = await res.json();
             currentModelSettings = data;
+            modelSettingsLoadFailed = false;
 
             if (!pathInput.dataset.userEdited) {
                 pathInput.value = data.local_model_path || "";
             }
-            if (typeSelect && data.local_model_type) {
+            if (typeSelect && !typeSelect.dataset.userEdited && data.local_model_type) {
                 typeSelect.value = data.local_model_type;
             }
 
             updateModelStatusBadge(data.exists, data.backend);
         }
     } catch (e) {
+        modelSettingsLoadFailed = true;
         console.warn("Failed to load model settings:", e);
+        renderStableTranslation(badge, "modelLoadFailed");
     }
 }
 
@@ -1206,10 +1284,10 @@ function updateModelStatusBadge(exists, backend) {
     if (exists) {
         badge.className = "badge badge-valid";
         const backendText = backend ? ` • ${backend}` : "";
-        badge.textContent = `${dict.modelPathValid}${backendText}`;
+        renderStableTranslation(badge, "modelPathValid", backendText);
     } else {
         badge.className = "badge badge-invalid";
-        badge.textContent = dict.modelPathInvalid;
+        renderStableTranslation(badge, "modelPathInvalid");
     }
 }
 
@@ -1221,9 +1299,11 @@ async function saveModelSettings() {
 
     const path = pathInput.value.trim();
     const type = typeSelect.value;
-    const dict = I18N[currentLang];
+    const saveButton = document.getElementById("save-model-button");
+    if (saveButton.disabled) return;
+    saveButton.disabled = true;
 
-    statusSpan.textContent = currentLang === 'vi' ? "Đang kiểm tra & nạp lại mô hình..." : "Checking & reloading model...";
+    statusSpan.textContent = currentLang === 'vi' ? "Đang kiểm tra & lưu cấu hình..." : "Checking & saving settings...";
     statusSpan.style.color = "var(--text-subtle)";
 
     try {
@@ -1240,18 +1320,23 @@ async function saveModelSettings() {
             const result = await res.json();
             currentModelSettings = result;
             delete pathInput.dataset.userEdited;
-            statusSpan.textContent = dict.modelSavedSuccess;
+            statusSpan.textContent = I18N[currentLang].modelSavedSuccess;
+            pathInput.value = result.local_model_path;
+            delete typeSelect.dataset.userEdited;
             statusSpan.style.color = "var(--accent-ink)";
             updateModelStatusBadge(result.exists, result.backend);
             setTimeout(() => { statusSpan.textContent = ""; }, 4000);
         } else {
-            const err = await res.text();
-            statusSpan.textContent = `${dict.modelSavedFailed}: ${err}`;
+            const error = await res.json();
+            const err = typeof error.detail === "string" ? error.detail : JSON.stringify(error.detail);
+            statusSpan.textContent = `${I18N[currentLang].modelSavedFailed}: ${err}`;
             statusSpan.style.color = "var(--danger-ink)";
         }
     } catch (e) {
-        statusSpan.textContent = `${dict.modelSavedFailed}: ${e.message}`;
+        statusSpan.textContent = `${I18N[currentLang].modelSavedFailed}: ${e.message}`;
         statusSpan.style.color = "var(--danger-ink)";
+    } finally {
+        saveButton.disabled = false;
     }
 }
 
@@ -1261,13 +1346,148 @@ function fillPresetPath(preset) {
     if (!pathInput) return;
 
     if (preset === 'mac-mlx') {
-        pathInput.value = "/Users/daotan/.lmstudio/models/lmstudio-community/Qwen3.5-2B-MLX-4bit";
+        pathInput.value = "~/.lmstudio/models/lmstudio-community/Qwen3.5-2B-MLX-4bit";
         if (typeSelect) typeSelect.value = "qwen";
     } else if (preset === 'win-gguf') {
         pathInput.value = "C:\\Users\\User\\.lmstudio\\models\\qwen2.5-3b-instruct-q4_k_m.gguf";
         if (typeSelect) typeSelect.value = "qwen";
     }
     pathInput.dataset.userEdited = "true";
+    markModelSettingsPending();
     pathInput.focus();
 }
 
+
+// Read-only picker: selection only fills the field; Save applies the setting.
+let modelBrowserData = null;
+let modelBrowserRequest = null;
+
+function openModelBrowser() {
+    const dialog = document.getElementById("model-browser");
+    dialog.showModal();
+    dialog.onclose = () => modelBrowserRequest?.abort();
+    browseModelFolder(document.getElementById("setting-model-path").value.trim(), 0, true);
+}
+
+function closeModelBrowser() {
+    modelBrowserRequest?.abort();
+    document.getElementById("model-browser").close();
+}
+
+async function browseModelFolder(path = "", offset = 0, initial = false) {
+    modelBrowserRequest?.abort();
+    const request = new AbortController();
+    modelBrowserRequest = request;
+    const list = document.getElementById("model-browser-list");
+    const status = document.getElementById("model-browser-status");
+    const select = document.getElementById("model-browser-select");
+    const up = document.getElementById("model-browser-up");
+    const more = document.getElementById("model-browser-more");
+    select.disabled = true;
+    up.disabled = true;
+    more.hidden = true;
+    list.setAttribute("aria-busy", "true");
+    status.className = "";
+    status.textContent = I18N[currentLang].browserLoading;
+    try {
+        const params = new URLSearchParams({offset: String(offset)});
+        if (path) params.set("path", path);
+        const response = await fetch(`${API_BASE}/settings/model/browse?${params}`, {signal: request.signal});
+        if (!response.ok) {
+            if (initial && path && response.status === 400) {
+                return browseModelFolder();
+            }
+            const error = await response.json();
+            throw new Error(typeof error.detail === "string" ? error.detail : response.statusText);
+        }
+        const data = await response.json();
+        if (request.signal.aborted) return;
+        modelBrowserData = data;
+        document.getElementById("model-browser-path").value = data.path;
+        const breadcrumbs = document.getElementById("model-browser-breadcrumbs");
+        breadcrumbs.replaceChildren();
+        data.breadcrumbs.forEach((part, index) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "btn-preset";
+            button.textContent = part.name;
+            button.title = part.path;
+            button.disabled = index === data.breadcrumbs.length - 1;
+            button.onclick = () => browseModelFolder(part.path);
+            breadcrumbs.appendChild(button);
+        });
+        const shortcuts = document.getElementById("model-browser-shortcuts");
+        shortcuts.replaceChildren();
+        data.shortcuts.forEach(shortcut => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "btn-preset";
+            button.textContent = {home: I18N[currentLang].browserHome, lmstudio: "LM Studio", huggingface: "Hugging Face", project: "models"}[shortcut.name] || shortcut.name;
+            button.title = shortcut.path;
+            button.onclick = () => browseModelFolder(shortcut.path);
+            shortcuts.appendChild(button);
+        });
+        if (offset === 0) {
+            list.replaceChildren();
+            list.scrollTop = 0;
+        }
+        data.entries.forEach(entry => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "model-browser-entry";
+            const icon = document.createElement("span");
+            icon.textContent = entry.is_directory ? "📁" : "📄";
+            icon.setAttribute("aria-hidden", "true");
+            const name = document.createElement("span");
+            name.textContent = entry.name;
+            button.append(icon, name);
+            button.title = entry.path;
+            button.onclick = () => entry.is_directory ? browseModelFolder(entry.path) : selectModelPath(entry.path);
+            const row = document.createElement("div");
+            row.className = "model-browser-row";
+            row.appendChild(button);
+            if (entry.selection_path) {
+                const choose = document.createElement("button");
+                choose.type = "button";
+                choose.className = "btn btn-primary model-entry-select";
+                choose.textContent = I18N[currentLang].chooseEntry;
+                choose.setAttribute("aria-label", `${I18N[currentLang].chooseEntry}: ${entry.name}`);
+                choose.onclick = () => selectModelPath(entry.selection_path);
+                row.appendChild(choose);
+            }
+            list.appendChild(row);
+        });
+        select.disabled = !data.selection_path;
+        select.textContent = I18N[currentLang].chooseEntry;
+        status.className = data.selection_path ? "model-found" : "";
+        up.disabled = data.parent === data.path;
+        more.hidden = data.next_offset === null;
+        status.textContent = I18N[currentLang][data.selection_path ? (data.can_select_directory ? "browserMlxHint" : "browserGgufHint") : (!list.children.length ? "browserEmpty" : "browserFolderHint")];
+    } catch (error) {
+        if (error.name !== "AbortError") {
+            list.replaceChildren();
+            status.className = "model-browser-error";
+            status.textContent = `${I18N[currentLang].browserFailed} ${error.message}`;
+        }
+    } finally {
+        if (modelBrowserRequest === request) list.setAttribute("aria-busy", "false");
+    }
+}
+
+function selectModelPath(path) {
+    const input = document.getElementById("setting-model-path");
+    input.value = path;
+    input.dataset.userEdited = "true";
+    markModelSettingsPending();
+    closeModelBrowser();
+    const status = document.getElementById("model-save-status");
+    status.textContent = I18N[currentLang].modelSelected;
+    status.style.color = "var(--text-secondary)";
+    input.focus();
+}
+
+function markModelSettingsPending() {
+    const badge = document.getElementById("model-status-badge");
+    badge.className = "badge";
+    renderStableTranslation(badge, "modelPending");
+}
